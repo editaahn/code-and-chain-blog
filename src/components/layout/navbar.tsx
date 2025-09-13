@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Languages, Menu } from "lucide-react";
 import { useState } from "react";
+import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 
 export function Navbar() {
   const t = useTranslations("navigation");
@@ -66,23 +67,28 @@ export function Navbar() {
               </Link>
             ))}
 
-            {/* Language Switcher */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <Languages className="h-4 w-4" />
-                  {locale === "ko" ? "한국어" : "English"}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => switchLocale("ko")}>
-                  한국어
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => switchLocale("en")}>
-                  English
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center space-x-2">
+              {/* Theme Switcher */}
+              <ThemeSwitcher />
+
+              {/* Language Switcher */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <Languages className="h-4 w-4" />
+                    {locale === "ko" ? "한국어" : "English"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => switchLocale("ko")}>
+                    한국어
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => switchLocale("en")}>
+                    English
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           {/* Mobile menu button */}
@@ -111,7 +117,13 @@ export function Navbar() {
                   {item.name}
                 </Link>
               ))}
-              <div className="px-3 py-2">
+              <div className="px-3 py-2 space-y-2">
+                {/* Theme Switcher for Mobile */}
+                <div className="w-full">
+                  <ThemeSwitcher />
+                </div>
+
+                {/* Language Switcher for Mobile */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
