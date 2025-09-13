@@ -1,0 +1,38 @@
+{
+  "navigation": {
+    "home": "Home",
+    "blog": "Blog",
+    "crypto": "Crypto",
+    "tech": "Tech",
+    "about": "About"
+  },
+  "categories": {
+    "crypto": "Crypto",
+    "crypto-issues": "Issues",
+    "crypto-tech": "Tech Analysis",
+    "tech": "Tech",
+    "frontend": "Frontend",
+    "etc": "Etc"
+  },
+  "blog": {
+    "title": "Blog",
+    "readMore": "Read More",
+    "readTime": "min read",
+    "publishedOn": "Published on",
+    "category": "Category",
+    "tags": "Tags",
+    "allPosts": "All Posts",
+    "latestPosts": "Latest Posts",
+    "relatedPosts": "Related Posts"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "notFound": "Page not found",
+    "backToHome": "Back to Home"
+  },
+  "seo": {
+    "title": "Code & Chain - Frontend & Crypto Blog",
+    "description": "A personal blog providing in-depth analysis and insights on frontend development and cryptocurrency technology."
+  }
+}

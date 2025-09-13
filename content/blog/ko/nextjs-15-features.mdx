@@ -1,0 +1,66 @@
+---
+title: "Next.js 15의 새로운 기능들 살펴보기"
+description: "Next.js 15에서 도입된 주요 기능들과 개선사항들을 자세히 알아보고, 실제 프로젝트에 어떻게 적용할 수 있는지 살펴봅니다."
+date: "2024-12-15"
+category: "tech"
+subcategory: "frontend"
+tags: ["Next.js", "React", "웹개발", "프론트엔드"]
+published: true
+---
+
+# Next.js 15의 새로운 기능들
+
+Next.js 15가 출시되면서 많은 흥미로운 기능들이 추가되었습니다. 이번 글에서는 주요 변경사항들을 살펴보고, 실제 개발에서 어떻게 활용할 수 있는지 알아보겠습니다.
+
+## 주요 변경사항
+
+### 1. React 19 지원
+
+Next.js 15는 React 19를 완전히 지원합니다. 이를 통해 다음과 같은 새로운 기능들을 사용할 수 있습니다:
+
+```jsx
+// React 19의 새로운 use() 훅 활용
+function BlogPost({ postPromise }) {
+  const post = use(postPromise);
+  
+  return (
+    <article>
+      <h1>{post.title}</h1>
+      <p>{post.content}</p>
+    </article>
+  );
+}
+```
+
+### 2. 개선된 Turbopack
+
+Turbopack의 성능이 대폭 개선되어 개발 서버 시작 시간이 76% 단축되었습니다.
+
+```bash
+# 개발 서버를 Turbopack으로 실행
+npm run dev --turbo
+```
+
+### 3. 새로운 캐싱 전략
+
+Next.js 15에서는 더욱 세밀한 캐싱 제어가 가능해졌습니다:
+
+```typescript
+// 새로운 캐싱 옵션
+export const revalidate = 3600; // 1시간마다 재검증
+export const dynamic = 'force-dynamic'; // 동적 렌더링 강제
+```
+
+## 실제 적용 사례
+
+이 블로그 프로젝트에서도 Next.js 15의 새로운 기능들을 적극 활용하고 있습니다:
+
+1. **App Router**: 모든 페이지가 App Router 기반으로 구축
+2. **Server Components**: SEO 최적화를 위한 서버 사이드 렌더링
+3. **국제화**: next-intl을 통한 다국어 지원
+
+## 마무리
+
+Next.js 15는 개발자 경험과 성능 모두에서 큰 개선을 가져왔습니다. 특히 React 19와의 조합은 더욱 강력한 웹 애플리케이션 개발을 가능하게 합니다.
+
+다음 글에서는 Next.js 15와 함께 사용하기 좋은 라이브러리들에 대해 알아보겠습니다.
