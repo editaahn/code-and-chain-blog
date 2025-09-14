@@ -29,7 +29,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       case "crypto":
         return t("categories.crypto");
       case "tech":
-        return t("categories.tech");
+        return t("categories.product-development");
       case "frontend":
         return t("categories.frontend");
       default:

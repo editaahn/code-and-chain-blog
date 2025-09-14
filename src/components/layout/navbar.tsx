@@ -21,7 +21,6 @@ export function Navbar() {
 
   const navigation = [
     { name: t("home"), href: "/" as const },
-    { name: t("blog"), href: "/blog" as const },
     {
       name: t("crypto"),
       href: {
@@ -49,7 +48,7 @@ export function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0 flex items-center">
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="text-2xl font-bold bg-gradient-to-r from-zinc-800 via-zinc-400 to-rose-700 bg-clip-text text-transparent">
                 Code & Chain
               </span>
             </Link>

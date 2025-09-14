@@ -15,9 +15,7 @@ export default async function BlogPage({ params }: BlogPageProps) {
     <div className="container mx-auto px-4 py-12">
       <div className="mb-12">
         <h1 className="text-4xl font-bold mb-4">{t("title")}</h1>
-        <p className="text-xl text-muted-foreground">
-          프론트엔드 개발과 암호화폐에 대한 인사이트를 공유합니다
-        </p>
+        <p className="text-xl text-muted-foreground">{t("allPosts")}</p>
       </div>
 
       {posts.length === 0 ? (
