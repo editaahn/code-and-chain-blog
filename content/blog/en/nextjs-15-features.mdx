@@ -2,7 +2,7 @@
 title: "Exploring New Features in Next.js 15"
 description: "A detailed look at the major features and improvements introduced in Next.js 15, and how to apply them in real projects."
 date: "2024-12-15"
-category: "tech"
+category: "product-development"
 subcategory: "frontend"
 tags: ["Next.js", "React", "Web Development", "Frontend"]
 published: true
@@ -22,7 +22,7 @@ Next.js 15 fully supports React 19, enabling us to use new features like:
 // Utilizing React 19's new use() hook
 function BlogPost({ postPromise }) {
   const post = use(postPromise);
-  
+
   return (
     <article>
       <h1>{post.title}</h1>
@@ -48,7 +48,7 @@ Next.js 15 enables more granular caching control:
 ```typescript
 // New caching options
 export const revalidate = 3600; // Revalidate every hour
-export const dynamic = 'force-dynamic'; // Force dynamic rendering
+export const dynamic = "force-dynamic"; // Force dynamic rendering
 ```
 
 ## Real-world Implementation

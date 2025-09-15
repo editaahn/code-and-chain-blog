@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import readingTime from "reading-time";
+import { CATEGORIES } from "./categories";
 
 export interface BlogPost {
   slug: string;
@@ -109,14 +110,37 @@ export function getPostsByCategory(
   });
 }
 
-export function getAllCategories(locale: string): string[] {
-  const posts = getAllPosts(locale);
-  const categories = [...new Set(posts.map((post) => post.category))];
-  return categories;
+export function getAllCategories(): string[] {
+  return Object.keys(CATEGORIES);
 }
 
 export function getAllTags(locale: string): string[] {
   const posts = getAllPosts(locale);
   const tags = [...new Set(posts.flatMap((post) => post.tags))];
   return tags;
+}
+
+export function getSubcategories(category: string): string[] {
+  return CATEGORIES[category];
+}
+
+export function getCategoryWithSubcategories(locale: string) {
+  const posts = getAllPosts(locale);
+  const categoryMap = new Map<string, Set<string>>();
+
+  posts.forEach((post) => {
+    if (!categoryMap.has(post.category)) {
+      categoryMap.set(post.category, new Set());
+    }
+    if (post.subcategory) {
+      categoryMap.get(post.category)!.add(post.subcategory);
+    }
+  });
+
+  const result: { [category: string]: string[] } = {};
+  categoryMap.forEach((subcategories, category) => {
+    result[category] = Array.from(subcategories);
+  });
+
+  return result;
 }

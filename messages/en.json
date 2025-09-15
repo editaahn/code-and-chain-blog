@@ -7,11 +7,12 @@
   },
   "categories": {
     "crypto": "Crypto",
-    "crypto-issues": "Issues",
-    "crypto-tech": "Tech Analysis",
+    "issues": "Issues",
+    "tech": "Tech Analysis",
     "product-development": "Product Development",
     "frontend": "Frontend",
-    "etc": "Etc"
+    "backend": "Backend",
+    "etc": "Etc."
   },
   "blog": {
     "title": "Blog",
@@ -19,6 +20,7 @@
     "readTime": "min read",
     "publishedOn": "Published on",
     "category": "Category",
+    "subcategories": "Subcategories",
     "tags": "Tags",
     "allPosts": "All Posts",
     "latestPosts": "Latest Posts",

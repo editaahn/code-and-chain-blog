@@ -7,10 +7,11 @@
   },
   "categories": {
     "crypto": "크립토",
-    "crypto-issues": "이슈",
-    "crypto-tech": "기술 해부",
+    "issues": "이슈",
+    "tech": "기술 해부",
     "product-development": "프로덕트 개발",
     "frontend": "프론트엔드",
+    "backend": "백엔드",
     "etc": "기타"
   },
   "blog": {
@@ -19,6 +20,7 @@
     "readTime": "분 읽기",
     "publishedOn": "게시일",
     "category": "카테고리",
+    "subcategories": "서브 카테고리",
     "tags": "태그",
     "allPosts": "모든 글",
     "latestPosts": "최신 글",

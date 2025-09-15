@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations, useLocale } from "next-intl";
-import { Link, usePathname } from "@/i18n/routing";
+import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,7 +16,6 @@ import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 export function Navbar() {
   const t = useTranslations("navigation");
   const locale = useLocale();
-  const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigation = [
@@ -32,14 +31,18 @@ export function Navbar() {
       name: t("tech"),
       href: {
         pathname: "/category/[category]" as const,
-        params: { category: "tech" },
+        params: { category: "product-development" },
       },
     },
   ];
 
   const switchLocale = (newLocale: string) => {
-    // This will be handled by the middleware
-    window.location.href = `/${newLocale}${pathname}`;
+    // Get the current URL to preserve actual path parameters
+    const currentUrl = window.location.pathname;
+    // Remove the current locale prefix to get the actual path
+    const pathWithoutLocale = currentUrl.replace(/^\/(ko|en)/, "");
+    // Redirect to the new locale with the actual path
+    window.location.href = `/${newLocale}${pathWithoutLocale}`;
   };
 
   return (

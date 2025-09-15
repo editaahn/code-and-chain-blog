@@ -1,21 +1,25 @@
 import { getTranslations } from "next-intl/server";
-import { getPostsByCategory, getAllCategories } from "@/lib/blog";
+import {
+  getPostsByCategory,
+  getAllCategories,
+  getSubcategories,
+} from "@/lib/blog";
 import { BlogCard } from "@/components/blog/blog-card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "@/i18n/routing";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Folder } from "lucide-react";
 
 interface CategoryPageProps {
   params: Promise<{ locale: string; category: string }>;
 }
 
 export async function generateStaticParams() {
-  const koCategories = getAllCategories("ko");
-  const enCategories = getAllCategories("en");
+  const allCategories = getAllCategories();
 
   return [
-    ...koCategories.map((category) => ({ locale: "ko", category })),
-    ...enCategories.map((category) => ({ locale: "en", category })),
+    ...allCategories.map((category) => ({ locale: "ko", category })),
+    ...allCategories.map((category) => ({ locale: "en", category })),
   ];
 }
 
@@ -23,18 +27,14 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const { locale, category } = await params;
   const t = await getTranslations();
   const posts = getPostsByCategory(category, locale);
+  const subcategories = getSubcategories(category);
 
   const getCategoryTitle = (cat: string) => {
-    switch (cat) {
-      case "crypto":
-        return t("categories.crypto");
-      case "tech":
-        return t("categories.product-development");
-      case "frontend":
-        return t("categories.frontend");
-      default:
-        return cat;
-    }
+    return t(`categories.${cat}`);
+  };
+
+  const getSubcategoryTitle = (subcat: string) => {
+    return t(`categories.${subcat}`);
   };
 
   return (
@@ -52,11 +52,33 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         <h1 className="text-4xl font-bold mb-4">
           {getCategoryTitle(category)}
         </h1>
-        <p className="text-xl text-muted-foreground">
-          {category === "crypto"
-            ? "암호화폐와 블록체인 기술에 대한 분석과 인사이트"
-            : "프론트엔드 개발과 기술 트렌드에 대한 글들"}
-        </p>
+
+        {subcategories.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Folder className="h-5 w-5" />
+              {t("blog.subcategories")}
+            </h2>
+            <div className="flex flex-wrap gap-3">
+              {subcategories.map((subcategory) => (
+                <Link
+                  key={subcategory}
+                  href={{
+                    pathname: "/category/[category]/[subcategory]",
+                    params: { category, subcategory },
+                  }}
+                >
+                  <Badge
+                    variant="secondary"
+                    className="text-sm py-2 px-4 hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
+                  >
+                    {getSubcategoryTitle(subcategory)}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {posts.length === 0 ? (

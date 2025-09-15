@@ -1,7 +1,8 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Code, TrendingUp } from "lucide-react";
+import { Code, TrendingUp } from "lucide-react";
+import { CATEGORIES } from "@/lib/categories";
 
 export default function Home() {
   const t = useTranslations();
@@ -30,6 +31,18 @@ export default function Home() {
             <h2 className="text-2xl font-bold">{t("categories.crypto")}</h2>
           </div>
           <div className="space-y-2">
+            {CATEGORIES.crypto.map((subcategory) => (
+              <Link
+                key={subcategory}
+                href={{
+                  pathname: "/category/[category]/[subcategory]",
+                  params: { category: "crypto", subcategory },
+                }}
+                className="block text-sm text-rose-600 hover:underline"
+              >
+                → {t(`categories.${subcategory}`)}
+              </Link>
+            ))}
             <Link
               href={{
                 pathname: "/category/[category]",
@@ -37,16 +50,7 @@ export default function Home() {
               }}
               className="block text-sm text-rose-600 hover:underline"
             >
-              → {t("categories.crypto-issues")}
-            </Link>
-            <Link
-              href={{
-                pathname: "/category/[category]",
-                params: { category: "crypto" },
-              }}
-              className="block text-sm text-rose-600 hover:underline"
-            >
-              → {t("categories.crypto-tech")}
+              → {t("blog.allPosts")}
             </Link>
           </div>
         </div>
@@ -61,23 +65,26 @@ export default function Home() {
             </h2>
           </div>
           <div className="space-y-2">
+            {CATEGORIES["product-development"].map((subcategory) => (
+              <Link
+                key={subcategory}
+                href={{
+                  pathname: "/category/[category]/[subcategory]",
+                  params: { category: "tech", subcategory },
+                }}
+                className="block text-sm text-rose-600 hover:underline"
+              >
+                → {t(`categories.${subcategory}`)}
+              </Link>
+            ))}
             <Link
               href={{
                 pathname: "/category/[category]",
-                params: { category: "tech" },
+                params: { category: "product-development" },
               }}
               className="block text-sm text-rose-600 hover:underline"
             >
-              → {t("categories.frontend")}
-            </Link>
-            <Link
-              href={{
-                pathname: "/category/[category]",
-                params: { category: "tech" },
-              }}
-              className="block text-sm text-rose-600 hover:underline"
-            >
-              → {t("categories.etc")}
+              → {t("blog.allPosts")}
             </Link>
           </div>
         </div>
