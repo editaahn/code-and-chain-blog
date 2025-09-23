@@ -20,9 +20,7 @@ export default async function BlogPage({ params }: BlogPageProps) {
 
       {posts.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground text-lg">
-            곧 흥미로운 글들이 업데이트될 예정입니다! 🚀
-          </p>
+          <p className="text-muted-foreground text-lg">{t("blog.soon")}</p>
         </div>
       ) : (
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">

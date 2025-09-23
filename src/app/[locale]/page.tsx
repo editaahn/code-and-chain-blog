@@ -1,11 +1,17 @@
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
 import { Code, TrendingUp } from "lucide-react";
 import { CATEGORIES } from "@/lib/categories";
+import LatestPosts from "@/components/blog/latest-posts";
 
-export default function Home() {
-  const t = useTranslations();
+interface HomePageProps {
+  params: Promise<{ locale: string }>;
+}
+
+export default async function Home({ params }: HomePageProps) {
+  const { locale } = await params;
+  const t = await getTranslations();
 
   return (
     <div className="container mx-auto px-4 py-16">
@@ -99,9 +105,7 @@ export default function Home() {
           </Button>
         </div>
 
-        <div className="text-center text-muted-foreground py-12">
-          곧 흥미로운 콘텐츠들이 업데이트될 예정입니다! 🚀
-        </div>
+        <LatestPosts locale={locale} limit={3} />
       </section>
     </div>
   );

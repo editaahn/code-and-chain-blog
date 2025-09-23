@@ -83,9 +83,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
       {posts.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground text-lg">
-            이 카테고리에는 아직 글이 없습니다. 곧 업데이트될 예정입니다! 🚀
-          </p>
+          <p className="text-muted-foreground text-lg">{t("blog.soon")}</p>
         </div>
       ) : (
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
