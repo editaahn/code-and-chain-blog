@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Code & Chain - Frontend & Crypto Blog",
+  title: "Code & Chain - Product Development & Crypto Blog",
   description:
-    "A personal blog providing in-depth analysis and insights on frontend development and cryptocurrency technology.",
+    "A personal blog providing in-depth analysis and insights on product development and cryptocurrency technology.",
 };
 
 export default function RootLayout({

@@ -55,8 +55,8 @@ export function SEO({ title, description, path = "", ...props }: SEOProps) {
           name: "keywords",
           content:
             locale === "ko"
-              ? "프론트엔드, 개발, 암호화폐, 블록체인, React, Next.js, 웹개발"
-              : "frontend, development, cryptocurrency, blockchain, React, Next.js, web development",
+              ? "프로덕트, 프론트엔드, 모바일, 웹, 개발, 웹개발, 암호화폐, 블록체인, React, Next.js, 크립토"
+              : "product, frontend, mobile, web, development, cryptocurrency, blockchain, React, Next.js, web development",
         },
       ]}
       {...props}
