@@ -8,9 +8,10 @@
   "categories": {
     "crypto": "Crypto",
     "issues": "Issues",
+    "weekly-trends": "Weekly Trends",
     "tech": "Tech Analysis",
     "product-development": "Product Development",
-    "frontend": "Frontend",
+    "frontend": "Frontend/Mobile",
     "backend": "Backend",
     "etc": "Etc."
   },
@@ -34,6 +35,6 @@
   },
   "seo": {
     "title": "Code & Chain - Product Development & Crypto Blog",
-    "description": "As a software engineer in crypto, I explore product development, blockchain technology, and industry trends."
+    "description": "Rita's blog: As a software engineer in crypto, I explore product development, blockchain technology, and industry trends."
   }
 }
