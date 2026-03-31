@@ -179,6 +179,11 @@
   @apply font-semibold text-foreground;
 }
 
+/* MDX comparison tables (styled via mdx-content.tsx wrappers) */
+.prose .mdx-table-wrap tbody tr:hover {
+  @apply bg-muted/40 dark:bg-muted/25;
+}
+
 /* Line clamp utilities */
 .line-clamp-2 {
   overflow: hidden;
