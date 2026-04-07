@@ -156,15 +156,20 @@
 }
 
 .prose ul {
-  @apply list-disc list-inside mb-4 space-y-1;
+  @apply list-disc list-outside mb-4 space-y-1 pl-6;
 }
 
 .prose ol {
-  @apply list-decimal list-inside mb-4 space-y-1;
+  @apply list-decimal list-outside mb-4 space-y-1 pl-6;
 }
 
 .prose li {
   @apply text-foreground/90;
+}
+
+.prose li > ul,
+.prose li > ol {
+  @apply mt-1 mb-0;
 }
 
 .prose blockquote {
