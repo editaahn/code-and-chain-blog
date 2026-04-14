@@ -1,4 +1,4 @@
 export const CATEGORIES: { [key: string]: string[] } = {
-  crypto: ["weekly-trends", "issues", "tech"],
+  crypto: ["issues", "tech"],
   "product-development": ["frontend", "backend", "etc"],
 };
