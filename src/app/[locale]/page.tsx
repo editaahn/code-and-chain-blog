@@ -100,12 +100,21 @@ export default async function Home({ params }: HomePageProps) {
       <section>
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-bold">{t("blog.latestPosts")}</h2>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="hidden md:inline-flex">
             <Link href="/blog">{t("blog.allPosts")}</Link>
           </Button>
         </div>
 
         <LatestPosts locale={locale} limit={3} />
+
+        {/* Mobile Only */}
+        <Button
+          variant="outline"
+          asChild
+          className="block md:hidden mt-6 mx-auto w-fit"
+        >
+          <Link href="/blog">{t("blog.allPosts")}</Link>
+        </Button>
       </section>
     </div>
   );

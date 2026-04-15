@@ -17,7 +17,7 @@ export function BlogCard({ post }: BlogCardProps) {
               <Calendar className="h-4 w-4" />
               <time dateTime={post.date}>
                 {new Date(post.date).toLocaleDateString(
-                  post.locale === "ko" ? "ko-KR" : "en-US"
+                  post.locale === "ko" ? "ko-KR" : "en-US",
                 )}
               </time>
               <Clock className="h-4 w-4 ml-2" />
@@ -41,7 +41,7 @@ export function BlogCard({ post }: BlogCardProps) {
             </p>
           </Link>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mt-2">
             <Link
               href={{
                 pathname: "/category/[category]",
