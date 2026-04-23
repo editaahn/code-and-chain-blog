@@ -4,6 +4,19 @@ import remarkGfm from "remark-gfm";
 import { highlight } from "sugar-high";
 
 const components = {
+  a: ({ href, rel, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
+    const isExternalLink = Boolean(href && /^(https?:)?\/\//.test(href));
+    const safeRel = rel ? `${rel} noopener noreferrer` : "noopener noreferrer";
+
+    return (
+      <a
+        href={href}
+        target={isExternalLink ? "_blank" : undefined}
+        rel={isExternalLink ? safeRel : rel}
+        {...props}
+      />
+    );
+  },
   pre: ({ children, ...props }: React.HTMLProps<HTMLPreElement>) => {
     return (
       <pre className="overflow-x-auto rounded-lg bg-muted p-4" {...props}>
