@@ -1,0 +1,240 @@
+---
+title: "Flutter가 그려지는 모든 과정 Deep Dive"
+description: Dart Isolate의 이벤트 루프부터 Flutter의 렌더링 메커니즘 A to Z 커버해보기.
+date: "2026-04-25"
+category: "product-development"
+subcategory: "frontend"
+tags: ["flutter", "dart", "architecture"]
+published: true
+---
+
+이 글은 사실 2025년 하반기에 초안을 썼으나, 계속 파고 들다보니 다른 글보다 릴리즈가 늦었다. 2024년 하반기에 우리 회사 모바일 앱을 Flutter 앱으로 다시 만들었는데, 구축 당시엔 Dart, Flutter 기본을 빠르게 익히고 애플리케이션 레벨의 설계와 구현에 집중했다면, 오히려 나중에 버그 개선과 퍼포먼스 향상 등 유지보수를 위해 이런 코어한 지식들이 필요함을 느끼게 되었다.
+
+# 1. Dart의 실행 단위
+
+Dart는 JavaScript와 **싱글 스레드, 이벤트 루프 기반**이라는 점에서 구조가 닮아 있어, JavaScript 개발자라면 유사성을 떠올리며 Dart의 구조를 짚어 보면 어렵지 않게 이해할 수 있다.
+
+## 1-1. Isolate란?
+
+- Dart VM은 **Isolate라는 독립된 실행 단위**를 가진다.
+- 각 Isolate는 **독립된 메모리 힙**과 자신만의 이벤트 루프를 운영한다.
+- Isolate 간에는 **직접 메모리를 공유하지 않는다.**
+- Dart VM은 내부적으로 OS 스레드를 사용해 Isolate를 스케줄링하며, 각 Isolate는 독립적인 단일 실행 흐름으로 동작한다.
+
+## 1-2. Isolate 구조
+
+![Isolate](/images/blog/260425-isolate.png)
+
+### Event Loop
+
+Isolate 내부에서 실행되는 모든 비동기 작업(`Future`, `async/await`)을 관리하는 **엔진의 핵심 장치**이다. Flutter 프레임워크는 이 루프의 특성을 활용해 작업의 우선순위를 분류하여 처리한다.
+
+- **Microtask Queue (가장 높은 우선순위)**
+  - 현재 실행 중인 작업 직후, **이벤트 큐의 메시지를 꺼내기 전**에 즉시 처리되어야 하는 내부 작업들을 위한 공간이다.
+  - 너무 무거운 작업을 넣으면 UI 응답이 멈출 수 있으므로 주의가 필요하다.
+  - _예: `Future.microtask`, `scheduleMicrotask`_
+
+- **Event Queue / Message Queue (표준 우선순위)**
+  - 사용자 입력, I/O, 타이머 등 외부에서 발생하는 대부분의 이벤트를 처리한다.
+  - _예: 클릭 이벤트, 네트워크 응답, 파일 읽기 완료 등_
+
+- **Frame Callbacks (Event Queue 내 특수 작업)**
+  - 애니메이션이나 프레임 렌더링을 위해 예약된 작업 목록
+  - Isolate 자체의 자료구조는 아니고, Flutter의 `SchedulerBinding`이 관리
+  - Flutter 엔진이 OS로부터 **VSync 신호**를 받으면, 엔진은 **Event Queue**에 프레임을 그리도록 명령하고, 이벤트 루프가 이 메시지를 처리할 때 `SchedulerBinding`에 등록된 콜백들이 차례대로 실행
+
+### Message Port (SendPort / ReceivePort)
+
+Isolate끼리 직접 메모리를 공유하지 않으므로, **메시지 전달(channel 통신)**을 통해 데이터를 주고 받는다.
+
+## 1-3. Flutter에서의 Isolate 사용 방식
+
+### Main Isolate
+
+- 플러터 앱을 실행하면 **Main Isolate가 기본적으로 실행**된다. JavaScript의 싱글 스레드와 유사한 개념인데, Flutter는 병렬적으로 다른 isolate를 추가 실행시켜 비동기 작업 등 다른 작업을 처리할 수 있다.
+- UI 빌드/레이아웃/렌더링을 담당한다.
+
+### Worker Isolate (별도 생성)
+
+- CPU 집약적인 연산(예: 암호화 연산, 이미지 처리)을 메인에서 하면 UI가 멈추니까 이런 작업을 별도의 Worker Isolate에서 수행.
+- 결과는 메시지를 통해 Main Isolate로 전달
+
+Worker Isolate 여러 개를 동시에 **병렬적으로 운영**할 수 있다. 그러나 여러 Isolate를 동시에 돌리면 Context Switching, GC 비용, Isolate 생성 오버헤드, 메시지 통신 부하 등 성능 상 트레이드 오프가 있다.
+
+---
+
+# 2. Rendering Mechanism
+
+Flutter 앱의 핵심 로직과 UI를 담당하는 **Main Isolate**는 매초 수십 번씩 화면(Frame)을 새로 그리는 복잡한 렌더링 메커니즘의 중심축 역할을 수행한다.
+Dart가 Isolate를 통해 독립적인 실행 환경을 보장한다면, Flutter는 이 환경 위에서 효율적인 UI 갱신을 위한 고유의 렌더링 시스템을 구축한다.
+
+## Frame
+
+Flutter 앱은 개발자가 만든 widget tree를 화면에 그릴 수 있는 render tree로 바꿔서 실행된다. 사용자 인터랙션이나 시간의 흐름을 따라 애니메이션이 동작하며, 이는 사실 정지된 그림(프레임)을 연속해서 빠르게 보여주는 것이다.
+
+이렇게 생성된 프레임들은 `FlutterView` 안에 렌더링되고, 이는 각 운영체제의 뷰 클래스 인스턴스로 표현된다. (e.g. Android의 `SurfaceView`, iOS의 `UIView`, Windows의 `HWND`, macOS의 `NSView`, Linux의 `GtkBox` 등)
+
+Flutter 앱이 화면을 갱신해야 할 때 프레임 요청이 스케줄러에 등록되고, **VSync**라는 신호를 기다린다.
+
+- 더 알아보기: [scheduleFrame](https://api.flutter.dev/flutter/scheduler/SchedulerBinding/scheduleFrame.html) 메서드, [embedder API](https://github.com/flutter/flutter/blob/main/engine/src/flutter/shell/platform/embedder/embedder.h)의 `FlutterEngineScheduleFrame` 등을 통해서 스케줄 요청
+
+## VSync
+
+Flutter가 UI를 부드럽게 그리려면 OS의 디스플레이 주사율과 정확히 맞춰서 프레임을 내보내야 하는데, 이때 **디스플레이를 새로 그릴 준비가 됐다는 하드웨어 신호**를 말한다.
+
+디스플레이는 보통 60Hz, 90Hz, 120Hz 같은 고정 주사율로 동작한다. 120Hz라면 1초에 120번 새 프레임을 표시하는 것을 뜻한다. Flutter 엔진은 이 주기와 동일한 VSync 신호를 OS로부터 받아서 새 프레임을 그린다.
+
+---
+
+# 3. Rendering Concept
+
+### TL;DR: Rendering Pipeline at a Glance
+
+| 단계             | 담당 주체 (Thread) | 출력물              | 핵심 역할                              |
+| :--------------- | :----------------- | :------------------ | :------------------------------------- |
+| **Build**        | UI Thread          | Element/Widget Tree | UI 구조 선언 및 변경사항 비교(Diffing) |
+| **Layout/Paint** | UI Thread          | Layer Tree          | 크기/위치 계산 및 그리기 명령 기록     |
+| **Rasterize**    | Raster Thread      | Framebuffer         | 렌더링 엔진이 픽셀 데이터를 생성       |
+| **Display**      | OS/GPU             | Pixels on Screen    | 최종 화면 출력                         |
+
+## 3-1. Architecture Design
+
+Flutter 엔진은 매 프레임마다 아래 그림과 같이 **UI 스레드와 GPU 스레드 파이프라인**을 거쳐 UI를 렌더링한다.
+
+- VSync 이벤트 발생 → UI 스레드 (Layer tree 제출) → GPU 스레드 (픽셀 변환, 실제 디스플레이) → GPU 전달
+
+![Flutter 렌더링 파이프라인](/images/blog/260425-renderingpipeline.png)
+출처: Alibaba Cloud | Exploration of the Flutter Rendering Mechanism from Architecture to Source Code
+
+Tree와 Thread라는 다른 레벨의 개념에 대한 설명이 필요한데, 쉽게 말하면 이렇다.
+
+- **Tree:** Flutter가 화면을 구성하는 데이터 구조이자 설계도 (무엇을 만들 것인가?)
+- **Thread:** 그 설계도를 들고 실제로 일을 하는 일꾼 (누가 만들 것인가?)
+
+아래 3-2, 3-3 섹션에서 하나씩 짚고 넘어가도록 한다.
+
+## 3-2. Tree
+
+```jsx
+Widget Tree (immutable)
+     ↓ build()
+Element Tree (bridge, keeps state & links)
+     ↓ updates
+RenderObject Tree (layout & paint)
+     ↓ paint()
+Layer Tree (Scene, compositing info)
+     ↓ rasterize
+GPU Framebuffer (pixels on screen)
+```
+
+### Widget Tree
+
+- `build()` 메서드에서 새로운 위젯 인스턴스가 매 프레임마다 생성된다.
+- Widget은 다음과 같은 성격을 지닌다.
+  - 선언적: state에 따라 UI가 어떤 구조가 되어야 하는지를 선언한다.
+  - 불변성
+    - 한 번 생성되면 내부 속성(`final`)은 변경할 수 없다.
+    - 상태가 바뀌면 새 Widget 인스턴스가 생성된다.
+  - 가벼움: 구조만 정의한다. state, rendering을 다루지 않는다.
+
+### **Element Tree**
+
+- Widget Tree와 RenderObject Tree를 **연결하는 브리지 역할**을 한다.
+- `setState()`가 호출되면 `build()` 메서드가 새 Widget Tree를 만들고, Element Tree는 이전 위젯들과 비교(diff)한다. 기존 Element를 최대한 재사용하여 필요한 부분만 업데이트하고 RenderObject에 전파한다.
+
+### **RenderObject Tree**
+
+- 레이아웃 및 페인팅 단계의 주체
+- 각 노드는 실제로 크기 측정(`layout`), 위치 결정, 그림(`paint`)을 담당한다.
+- `paint()` 단계에서 Layer를 만들고, 이 Layer들이 합쳐져 Layer Tree가 된다.
+
+### Layer Tree
+
+- 여러 layer들을 합쳐 Scene을 구성한다.
+- Layer Tree는 UI 스레드에서 만들어지고, GPU 스레드(Raster 스레드)로 전달되어 렌더링 엔진(Skia/Impeller)이 실제 GPU draw call로 변환한다.
+
+## 3-3. Thread
+
+### UI Thread
+
+Dart VM에서 개발자가 작성한 애플리케이션 코드와 Flutter 프레임워크 코드를 포함하는 Dart 코드를 실행한다. 5단계를 거치는 과정에서 Widget tree, Element tree, RenderObject tree를 순차적으로 그린 후 **Layer tree를 산출한다.**
+
+1. **Animation / Scheduler**
+   - `Ticker`나 `AnimationController`가 이 단계에서 값을 갱신.
+   - `setState`가 불리면 이 단계에서 dirty widget으로 표시된다.
+2. **Build**
+   - `build()` 메서드 호출 (Dirty widget을 다시 빌드) → Widget tree 생성/갱신
+   - Widget Tree의 변화가 Element tree에 반영됨
+   - Element tree는 기존 위젯과 새 위젯을 비교(diff)해서 RenderObject에 변경 사항 전파
+3. **Layout**
+   - RenderObject tree에서 각 노드의 크기와 위치를 계산
+   - 부모의 제약조건(constraints)에 맞춰 자식들이 크기 결정
+4. **Paint**
+   - RenderObject tree가 화면에 그릴 정보(그림자, 색상, 텍스트 등)를 `Layer tree`에 기록하여 뼈대를 만듦
+   - 아직 GPU에는 전달되지 않은 상태
+5. **Submit**
+   - 오버레이, 투명도, 클리핑 등 최적화된 구조로 `Layer Tree`를 GPU에 넘긴다.
+
+### **Raster Thread (GPU Thread)**
+
+Raster Thread는 Flutter 엔진에서 그래픽 관련 코드를 실행하며, GPU와 의사소통한다. `Layer Tree`를 **Rasterize(픽셀화)하고 composite(합성)하여** screen에 트리를 보여준다.
+
+어떤 아티클에 따르면 UI thread는 마치 생산자, GPU thread는 소비자처럼 기능한다.
+
+1. **Rasterize**
+   - Skia 또는 Impeller 엔진이 GPU를 이용해 실제 픽셀로 변환한다.
+   - 최종적으로 스크린에 보여지는 화면을 만든다.
+2. **Composite**
+   - GPU가 실제 화면에 여러 버퍼/레이어를 블렌딩하는 과정
+
+---
+
+# 4. Rendering Engine
+
+Dart 코드가 작성한 `Layer Tree`를 받아, **실제 GPU 명령어로 변환**하여 화면의 픽셀(Pixel)을 채우는 역할을 한다.
+
+### Skia (Legacy)
+
+오랫동안 Flutter의 기본 그래픽 엔진이었다. 범용성이 좋으나, **shader**(GPU에서 그림을 그리는 프로그램)를 **런타임에 컴파일하면서 발생하는 성능 이슈**가 있었다.
+
+### Impeller
+
+Skia의 한계를 극복하기 위해 Flutter 팀이 직접 만든 차세대 엔진. **앱 빌드 시점에 shader를 미리 컴파일**하여 끊김 없는 애니메이션을 제공한다. (현재 iOS/Android 기본 적용 중)
+
+---
+
+# 5. 기타: Warm-up Frame
+
+**앱이 처음 켜질 때 첫 프레임을 최대한 빨리 사용자에게 보여주기 위한 용도이다.**
+
+일반적인 Flutter 프레임은 OS로부터 VSync 신호를 받아야만 작업을 시작한다. 하지만 앱이 막 실행된 직후나 핫 리로드 직후에는 시스템 준비 상태에 따라 **VSync 신호가 도달하기까지 수 밀리초의 공백**이 발생할 수 있다.
+
+Flutter는 이 짧은 대기 시간조차 낭비하지 않기 위해 `scheduleWarmUpFrame`이라는 매커니즘을 사용한다.
+
+VSync 신호를 기다리지 않고, 가능한 가장 빠른 시점에 빌드와 레이아웃 과정을 강제로 수행한다. 이렇게 렌더링 파이프라인을 한 번 미리 가동함으로써 **첫 번째 프레임 준비 시간을 앞당긴다.**
+
+> **참고:** Warm-up frame은 파이프라인을 예열하는 것이 목적이므로 상황에 따라 실제 디스플레이에 최종 렌더링되지 않을 수도 있다. 하지만 뒤이어 오는 정식 VSync 프레임이 이미 계산된 데이터를 활용할 수 있게 하여 전체적인 렌더링 속도를 높여줄 수 있다.
+
+---
+
+# 6. 마무리 및 적용 예시
+
+지금까지 Dart의 Isolate 구조부터 Flutter의 렌더링 파이프라인, 그리고 차세대 엔진인 Impeller까지 깊이 있게 살펴보았다.
+
+결국 Flutter 개발자에게 이러한 내부 동작 원리를 이해한다는 것은 이론적인 지식을 넓히는 것을 넘어 **실제 런타임 문제의 급소를 찾아내는 직관**을 갖게 한다. 다음은 직접 경험한 구체적인 샘플이다.
+
+1. 트리 관계를 이해하면 불필요한 리빌드를 줄이고, 어떤 시점에 `setState`를 호출하는 것이 최적인지 알 수 있다.
+   - 예시: `build()` 함수가 돌아가는 도중에 다시 `setState`를 호출하면 프레임워크는 에러를 뱉는다. 이때는 `addPostFrameCallback`을 통해 다음 프레임으로 작업을 미루는 결정을 내릴 수 있다.
+2. 앱이 버벅거릴 때 트러블 슈팅해보면, 비즈니스 로직의 문제인지 과도한 그래픽 효과로 인한 엔진의 부하인지 로그, 작업 스택, 익셉션 등을 보고 판단할 수 있다.
+   - 예시: 사용 중인 라이브러리(이미지 프로세싱, 암호화, 데이터베이스 처리 등)가 내부적으로 병렬 처리를 위해 여러 Isolate를 사용한다면 발견 시 대처할 수 있다.
+
+처음 Flutter를 접할 때는 위젯을 화면에 배치하는 것만으로도 충분히 즐겁다. 하지만 우리가 만든 프로덕트가 사용자에게 더 쾌적한 경험을 제공하기 위해서는 코드 너머에서 일어나는 일들에 끊임없이 질문을 던져야 한다.
+
+---
+
+## 주요 Reference
+
+- [Understanding the Three Trees in Flutter: Widget, Element, and Render Trees](https://mailharshkhatri.medium.com/understanding-the-three-trees-in-flutter-widget-element-and-render-trees-d31e337d220b)
+- [Flutter Github | Life of a Flutter Frame](https://github.com/flutter/flutter/blob/master/docs/engine/Life-of-a-Flutter-Frame.md)
+- https://blog.flutter.dev/raster-thread-performance-optimization-tips-e949b9dbcf06
+- [Alibaba Cloud | Exploration of the Flutter Rendering Mechanism from Architecture to Source Code](https://www.alibabacloud.com/blog/exploration-of-the-flutter-rendering-mechanism-from-architecture-to-source-code_597285)
