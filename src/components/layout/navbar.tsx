@@ -34,6 +34,13 @@ export function Navbar() {
         params: { category: "product-development" },
       },
     },
+    {
+      name: t("personal"),
+      href: {
+        pathname: "/category/[category]" as const,
+        params: { category: "personal" },
+      },
+    },
   ];
 
   const switchLocale = (newLocale: string) => {

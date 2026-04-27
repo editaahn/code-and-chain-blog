@@ -9,6 +9,20 @@ const nextConfig: NextConfig = {
   experimental: {
     mdxRs: true,
   },
+  async redirects() {
+    return [
+      {
+        source: "/ko/category/personal/about",
+        destination: "/ko/about",
+        permanent: true,
+      },
+      {
+        source: "/en/category/personal/about",
+        destination: "/en/about",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 const withMDX = createMDX({

@@ -3,6 +3,7 @@
     "home": "Home",
     "crypto": "Crypto",
     "tech": "Tech",
+    "personal": "Personal",
     "about": "About"
   },
   "categories": {
@@ -11,8 +12,11 @@
     "tech": "Tech Analysis",
     "product-development": "Product Development",
     "frontend": "Frontend/Mobile",
-    "backend": "Backend",
-    "etc": "Etc."
+    "ai": "AI",
+    "etc": "Etc.",
+    "personal": "Personal",
+    "about": "About Me",
+    "thoughts": "Personal Notes"
   },
   "blog": {
     "title": "Blog",
@@ -36,5 +40,12 @@
   "seo": {
     "title": "Code & Chain - Product Development & Crypto Blog",
     "description": "Rita's blog: As a software engineer in crypto, I explore product development, blockchain technology, and industry trends."
+  },
+  "aboutPage": {
+    "metaTitle": "About Rita",
+    "p1": "Software engineer in the crypto industry. I explore product development, economics, and the broader Web3 ecosystem while navigating the new variables in my life.",
+    "p2": "For longer essays and one-off pieces, you’ll find them under the Personal — Personal Notes section.",
+    "githubUrl": "https://github.com/editaahn",
+    "linkedinUrl": "https://www.linkedin.com/in/ritaahn"
   }
 }

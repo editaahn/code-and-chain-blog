@@ -1,9 +1,19 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
-import { Code, TrendingUp } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Code, Key, Coffee } from "lucide-react";
 import { CATEGORIES } from "@/lib/categories";
 import LatestPosts from "@/components/blog/latest-posts";
+
+const HOME_CATEGORY_BLOCKS: {
+  key: keyof typeof CATEGORIES;
+  icon: LucideIcon;
+}[] = [
+  { key: "personal", icon: Coffee },
+  { key: "crypto", icon: Key },
+  { key: "product-development", icon: Code },
+];
 
 interface HomePageProps {
   params: Promise<{ locale: string }>;
@@ -22,78 +32,63 @@ export default async function Home({ params }: HomePageProps) {
             Code & Chain
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto">
-            {t("seo.description")}
+            Tech, crypto, economics—exploring the intersection
+            of innovation and global trends.
           </p>
+          <Button variant="outline" asChild>
+            <Link href="/about">About Me</Link>
+          </Button>
         </div>
       </section>
 
       {/* Categories Section */}
-      <section className="grid md:grid-cols-2 gap-8 mb-20">
-        <div className="p-8 rounded-lg border bg-card hover:shadow-lg transition-shadow">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 rounded-lg bg-rose-100 dark:bg-rose-900/20">
-              <TrendingUp className="h-8 w-8 text-rose-600" />
+      <section className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
+        {HOME_CATEGORY_BLOCKS.map(({ key: categoryKey, icon: Icon }) => (
+          <div
+            key={categoryKey}
+            className="p-8 rounded-lg border bg-card hover:shadow-lg transition-shadow"
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-3 rounded-lg bg-rose-100 dark:bg-rose-900/20">
+                <Icon className="h-8 w-8 text-rose-600" />
+              </div>
+              <h2 className="text-2xl font-bold">
+                {t(`categories.${categoryKey}`)}
+              </h2>
             </div>
-            <h2 className="text-2xl font-bold">{t("categories.crypto")}</h2>
-          </div>
-          <div className="space-y-2">
-            {CATEGORIES.crypto.map((subcategory) => (
+            <div className="space-y-2">
+              {categoryKey === "personal" && (
+                <Link
+                  href="/about"
+                  className="block text-sm text-rose-600 hover:underline"
+                >
+                  → {t("categories.about")}
+                </Link>
+              )}
+              {CATEGORIES[categoryKey].map((subcategory) => (
+                <Link
+                  key={subcategory}
+                  href={{
+                    pathname: "/category/[category]/[subcategory]",
+                    params: { category: categoryKey, subcategory },
+                  }}
+                  className="block text-sm text-rose-600 hover:underline"
+                >
+                  → {t(`categories.${subcategory}`)}
+                </Link>
+              ))}
               <Link
-                key={subcategory}
                 href={{
-                  pathname: "/category/[category]/[subcategory]",
-                  params: { category: "crypto", subcategory },
+                  pathname: "/category/[category]",
+                  params: { category: categoryKey },
                 }}
                 className="block text-sm text-rose-600 hover:underline"
               >
-                → {t(`categories.${subcategory}`)}
+                → {t("blog.allPosts")}
               </Link>
-            ))}
-            <Link
-              href={{
-                pathname: "/category/[category]",
-                params: { category: "crypto" },
-              }}
-              className="block text-sm text-rose-600 hover:underline"
-            >
-              → {t("blog.allPosts")}
-            </Link>
-          </div>
-        </div>
-
-        <div className="p-8 rounded-lg border bg-card hover:shadow-lg transition-shadow">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 rounded-lg bg-rose-100 dark:bg-rose-900/20">
-              <Code className="h-8 w-8 text-rose-600" />
             </div>
-            <h2 className="text-2xl font-bold">
-              {t("categories.product-development")}
-            </h2>
           </div>
-          <div className="space-y-2">
-            {CATEGORIES["product-development"].map((subcategory) => (
-              <Link
-                key={subcategory}
-                href={{
-                  pathname: "/category/[category]/[subcategory]",
-                  params: { category: "tech", subcategory },
-                }}
-                className="block text-sm text-rose-600 hover:underline"
-              >
-                → {t(`categories.${subcategory}`)}
-              </Link>
-            ))}
-            <Link
-              href={{
-                pathname: "/category/[category]",
-                params: { category: "product-development" },
-              }}
-              className="block text-sm text-rose-600 hover:underline"
-            >
-              → {t("blog.allPosts")}
-            </Link>
-          </div>
-        </div>
+        ))}
       </section>
 
       {/* Latest Posts Section */}

@@ -40,18 +40,7 @@ export default async function SubcategoryPage({
   const t = await getTranslations();
   const posts = getPostsByCategory(category, locale, subcategory);
 
-  const getCategoryTitle = (cat: string) => {
-    switch (cat) {
-      case "crypto":
-        return t("categories.crypto");
-      case "product-development":
-        return t("categories.product-development");
-      case "frontend":
-        return t("categories.frontend");
-      default:
-        return cat;
-    }
-  };
+  const getCategoryTitle = (cat: string) => t(`categories.${cat}`);
 
   const getSubcategoryTitle = (subcat: string) => {
     return t(`categories.${subcat}`);
