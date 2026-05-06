@@ -1,0 +1,232 @@
+---
+title: "Deep Dive: The Entire Process of How Flutter Renders"
+description: Covering everything from the Dart Isolate event loop to Flutter's rendering mechanism A to Z.
+date: "2026-04-25"
+category: "product-development"
+subcategory: "frontend"
+tags: ["flutter", "dart", "architecture"]
+published: true
+---
+
+I actually wrote the draft for this post in late 2025, but because I kept digging deeper, the release was delayed compared to other articles. In the second half of 2024, we rebuilt our company's mobile app using Flutter. While I initially focused on quickly learning the basics of Dart and Flutter to prioritize application-level design and implementation, I eventually realized that core knowledge is essential for maintenance, bug fixes, and performance optimization.
+
+# 1. Dart's Execution Unit
+
+Dart is structurally similar to JavaScript in that it is **single-threaded and based on an event loop**. For JavaScript developers, understanding Dart's structure becomes quite intuitive once you recognize these similarities.
+
+## 1-1. What is an Isolate?
+
+- The Dart VM features **independent execution units called Isolates**.
+- Each Isolate operates with its own **independent memory heap** and its own event loop.
+- Isolates **do not share memory directly.**
+- The Dart VM uses OS threads internally to schedule Isolates, and each Isolate functions as an independent, single flow of execution.
+
+## 1-2. Isolate Structure
+
+### Event Loop
+
+This is the **core engine mechanism** that manages all asynchronous tasks (`Future`, `async/await`) running within an Isolate. The Flutter framework leverages the characteristics of this loop to prioritize and process tasks.
+
+- **Microtask Queue (Highest Priority)**
+  - This is for internal tasks that must be processed immediately after the current task finishes but **before pulling a message from the event queue**.
+  - One must be careful, as putting heavy tasks here can cause the UI to stop responding.
+  - _Examples: `Future.microtask`, `scheduleMicrotask`_
+- **Event Queue / Message Queue (Standard Priority)**
+  - Handles most events triggered externally, such as user input, I/O, and timers.
+  - _Examples: Click events, network responses, file read completions._
+- **Frame Callbacks (Special Tasks within the Event Queue)**
+  - A list of tasks scheduled for animation or frame rendering.
+  - This isn't a data structure of the Isolate itself; rather, it is managed by Flutter’s `SchedulerBinding`.
+  - When the Flutter engine receives a **VSync signal** from the OS, it commands the **Event Queue** to draw a frame. When the event loop processes this message, the callbacks registered in `SchedulerBinding` are executed in order.
+
+### Message Port (SendPort / ReceivePort)
+
+Since Isolates do not share memory directly, they exchange data through **message passing (channel communication)**.
+
+## 1-3. How Isolates are used in Flutter
+
+### Main Isolate
+
+- When you run a Flutter app, the **Main Isolate starts by default**. This is similar to the single-thread concept in JavaScript, but Flutter can additionally execute other Isolates in parallel to handle asynchronous or heavy tasks.
+- Responsible for UI building, layout, and rendering.
+
+### Worker Isolate (Separately Created)
+
+- Since performing CPU-intensive operations (e.g., encryption, image processing) on the main Isolate freezes the UI, these tasks are performed in a separate Worker Isolate.
+- The results are sent back to the Main Isolate via messages.
+
+You can run multiple Worker Isolates **simultaneously in parallel**. However, running several Isolates at once involves performance trade-offs such as context switching, GC costs, Isolate creation overhead, and message communication load.
+
+---
+
+# 2. Rendering Mechanism
+
+The **Main Isolate**, which handles the core logic and UI, serves as the central axis of a complex rendering mechanism that redraws the screen (Frame) dozens of times per second. While Dart ensures an independent execution environment through Isolates, Flutter builds a unique rendering system on top of this environment for efficient UI updates.
+
+## Frame
+
+A Flutter app runs by transforming the developer-created Widget tree into a Render tree that can be drawn on the screen. Animations work by following user interactions or the passage of time, which are essentially a continuous series of still images (frames) shown in rapid succession.
+
+The generated frames are rendered within a `FlutterView`, which is represented by a view class instance of the respective operating system (e.g., Android's `SurfaceView`, iOS's `UIView`, Windows' `HWND`, macOS's `NSView`, Linux's `GtkBox`).
+
+When a Flutter app needs to update the screen, a frame request is registered in the scheduler, which then waits for a signal called **VSync**.
+
+- Learn more: Request schedules via the `scheduleFrame` method or `FlutterEngineScheduleFrame` in the [embedder API](https://github.com/flutter/flutter/blob/main/engine/src/flutter/shell/platform/embedder/embedder.h).
+
+## VSync
+
+To draw a smooth UI, Flutter must align its frame output precisely with the OS display's refresh rate. **VSync** is the hardware signal indicating that the **display is ready to be redrawn**.
+
+Displays typically operate at fixed refresh rates like 60Hz, 90Hz, or 120Hz. A rate of 120Hz means the display shows a new frame 120 times per second. The Flutter engine receives this VSync signal from the OS and draws a new frame in sync with this cycle.
+
+---
+
+# 3. Rendering Concept
+
+### TL;DR: Rendering Pipeline at a Glance
+
+| Stage            | Responsible Subject (Thread) | Output              | Core Role                                           |
+| :--------------- | :--------------------------- | :------------------ | :-------------------------------------------------- |
+| **Build**        | UI Thread                    | Element/Widget Tree | Declaring UI structure & Diffing changes            |
+| **Layout/Paint** | UI Thread                    | Layer Tree          | Calculating size/position & recording draw commands |
+| **Rasterize**    | Raster Thread                | Framebuffer         | Rendering engine generates pixel data               |
+| **Display**      | OS/GPU                       | Pixels on Screen    | Final screen output                                 |
+
+## 3-1. Architecture Design
+
+Every frame, the Flutter engine renders the UI through a **UI thread and GPU thread pipeline**, as shown in the diagram below.
+
+- VSync Event → UI Thread (Submit Layer Tree) → GPU Thread (Pixel conversion, actual display) → Delivered to GPU.
+
+_Source: Alibaba Cloud | Exploration of the Flutter Rendering Mechanism from Architecture to Source Code_
+
+It is necessary to explain the concepts of **Trees** and **Threads**, which exist at different levels:
+
+- **Tree:** The data structure and blueprint of the screen (What will we make?).
+- **Thread:** The worker who takes that blueprint and does the actual work (Who will make it?).
+
+Sections 3-2 and 3-3 will break these down further.
+
+## 3-2. Tree
+
+```text
+Widget Tree (immutable)
+     ↓ build()
+Element Tree (bridge, keeps state & links)
+     ↓ updates
+RenderObject Tree (layout & paint)
+     ↓ paint()
+Layer Tree (Scene, compositing info)
+     ↓ rasterize
+GPU Framebuffer (pixels on screen)
+```
+
+### Widget Tree
+
+- New widget instances are created every frame within the `build()` method.
+- Widgets have the following characteristics:
+  - **Declarative:** They declare what the UI structure should look like based on the state.
+  - **Immutable:** Once created, internal properties (`final`) cannot be changed. If the state changes, a new Widget instance is created.
+  - **Lightweight:** They only define the structure and do not handle state or rendering directly.
+
+### Element Tree
+
+- Acts as the **bridge connecting** the Widget Tree and the RenderObject Tree.
+- When `setState()` is called, the `build()` method creates a new Widget Tree, and the Element Tree compares (diffs) it with the previous widgets. It reuses existing Elements as much as possible, updating only what is necessary and propagating those changes to the RenderObjects.
+
+### RenderObject Tree
+
+- The primary entity for the layout and painting stages.
+- Each node is responsible for actual size measurement (`layout`), positioning, and drawing (`paint`).
+- In the `paint()` stage, Layers are created, which are then combined to form the **Layer Tree**.
+
+### Layer Tree
+
+- Combines various layers to form a **Scene**.
+- The Layer Tree is created on the UI thread and passed to the GPU thread (Raster thread), where the rendering engine (Skia/Impeller) converts it into actual GPU draw calls.
+
+## 3-3. Thread
+
+### UI Thread
+
+This thread executes the Dart code, including the application code written by the developer and the Flutter framework code within the Dart VM. It goes through the 5-step process to sequentially process the Widget, Element, and RenderObject trees, eventually **producing a Layer tree.**
+
+1.  **Animation / Scheduler**
+    - `Ticker` or `AnimationController` updates values here.
+    - If `setState` is called, the widget is marked as "dirty" in this stage.
+2.  **Build**
+    - Calls the `build()` method (rebuilding dirty widgets) → Creates/updates the Widget tree.
+    - Changes in the Widget Tree are reflected in the Element tree.
+    - The Element tree diffs the old and new widgets to propagate changes to RenderObjects.
+3.  **Layout**
+    - Calculates the size and position of each node in the RenderObject tree.
+    - Children determine their size based on constraints from the parent.
+4.  **Paint**
+    - The RenderObject tree records information to be drawn on the screen (shadows, colors, text, etc.) into the `Layer tree`, creating a skeleton.
+    - At this stage, it has not been sent to the GPU yet.
+5.  **Submit**
+    - The `Layer Tree` is handed over to the GPU in an optimized structure (handling overlays, transparency, clipping, etc.).
+
+### Raster Thread (GPU Thread)
+
+The Raster Thread runs graphics-related code in the Flutter engine and communicates with the GPU. It **rasterizes (pixelates) and composites** the `Layer Tree` to display it on the screen.
+
+Some articles describe the UI thread as a "producer" and the GPU thread as a "consumer."
+
+1.  **Rasterize**
+    - The Skia or Impeller engine uses the GPU to convert the instructions into actual pixels.
+    - Creates the final image seen on the screen.
+2.  **Composite**
+    - The process where the GPU blends various buffers/layers onto the actual screen.
+
+---
+
+# 4. Rendering Engine
+
+The engine receives the `Layer Tree` produced by the Dart code and **converts it into actual GPU commands** to fill the pixels on the screen.
+
+### Skia (Legacy)
+
+Skia was Flutter's default graphics engine for a long time. While versatile, it suffered from **performance issues caused by compiling shaders** (programs that draw on the GPU) **at runtime**.
+
+### Impeller
+
+A next-generation engine built by the Flutter team to overcome Skia's limitations. It **pre-compiles shaders at app build time**, providing jank-free animations. (Currently the default for iOS and Android).
+
+---
+
+# 5. Miscellaneous: Warm-up Frame
+
+**This is used to show the user the first frame as quickly as possible when the app is first launched.**
+
+Normally, a Flutter frame starts its work only after receiving a VSync signal from the OS. However, immediately after an app launch or a hot reload, there can be a **gap of several milliseconds before the VSync signal arrives**, depending on the system's readiness.
+
+To avoid wasting even this short waiting time, Flutter uses a mechanism called `scheduleWarmUpFrame`.
+
+It forcibly performs the build and layout processes at the earliest possible moment without waiting for the VSync signal. By "warming up" the rendering pipeline once in advance, it **speeds up the preparation time for the first frame.**
+
+> **Note:** Since the purpose of the Warm-up frame is to prime the pipeline, the result might not actually be rendered to the final display in some cases. However, it allows the subsequent official VSync frame to utilize pre-calculated data, thereby increasing overall rendering speed.
+
+---
+
+# 6. Conclusion and Application Examples
+
+We've taken a deep look at everything from Dart's Isolate structure to Flutter's rendering pipeline and the next-generation Impeller engine.
+
+Ultimately, for a Flutter developer, understanding these internal workings goes beyond expanding theoretical knowledge—it provides the **intuition to pinpoint the root causes of runtime issues.** Here are some specific examples I've experienced:
+
+1.  **Optimizing Rebuilds:** Understanding tree relationships helps reduce unnecessary rebuilds and helps determine the optimal time to call `setState`.
+    - _Example:_ If you call `setState` while the `build()` function is still running, the framework throws an error. In this case, you can use `addPostFrameCallback` to defer the task to the next frame.
+2.  **Troubleshooting Performance:** When the app lags, you can determine whether it's a business logic issue or engine load from excessive graphic effects by analyzing logs, task stacks, and exceptions.
+    - _Example:_ If a library you use (image processing, encryption, database, etc.) uses multiple Isolates for parallel processing internally, you'll know how to handle it when it appears in your stack.
+
+When first starting Flutter, simply placing widgets on the screen is fun enough. However, to provide a smoother experience for our users, we must constantly ask questions about what is happening "behind the code."
+
+---
+
+## Key References
+
+- [Understanding the Three Trees in Flutter: Widget, Element, and Render Trees](https://mailharshkhatri.medium.com/understanding-the-three-trees-in-flutter-widget-element-and-render-trees-d31e337d220b)
+- [Flutter Github | Life of a Flutter Frame](https://github.com/flutter/flutter/blob/master/docs/engine/Life-of-a-Flutter-Frame.md)
+- [Raster thread performance optimization tips](https://blog.flutter.dev/raster-thread-performance-optimization-tips-e949b9dbcf06)
+- [Alibaba Cloud | Exploration of the Flutter Rendering Mechanism from Architecture to Source Code](https://www.alibabacloud.com/blog/exploration-of-the-flutter-rendering-mechanism-from-architecture-to-source-code_597285)
