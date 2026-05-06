@@ -28,6 +28,7 @@ export function TocIndicator({ label = "Contents" }: TocIndicatorProps) {
   const [headings, setHeadings] = useState<HeadingItem[]>([]);
   const [activeId, setActiveId] = useState<string>("");
   const [isOpen, setIsOpen] = useState(false);
+  const [canHover, setCanHover] = useState(false);
   const containerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -86,6 +87,20 @@ export function TocIndicator({ label = "Contents" }: TocIndicatorProps) {
 
   const hasHeadings = useMemo(() => headings.length > 0, [headings.length]);
 
+  // on desktop (mouse) keep the hover behavior, on mobile (touch) disable the hover behavior
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const updateCanHover = () => setCanHover(mediaQuery.matches);
+
+    updateCanHover();
+    mediaQuery.addEventListener("change", updateCanHover);
+
+    return () => {
+      mediaQuery.removeEventListener("change", updateCanHover);
+    };
+  }, []);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -119,8 +134,12 @@ export function TocIndicator({ label = "Contents" }: TocIndicatorProps) {
     <aside
       ref={containerRef}
       className="fixed bottom-6 right-2 z-40 md:bottom-auto md:right-4 md:top-1/2 md:-translate-y-1/2"
-      onMouseEnter={() => setIsOpen(true)}
-      onMouseLeave={() => setIsOpen(false)}
+      onMouseEnter={() => {
+        if (canHover) setIsOpen(true);
+      }}
+      onMouseLeave={() => {
+        if (canHover) setIsOpen(false);
+      }}
       aria-label="Table of contents indicator"
     >
       <div className="relative flex items-center justify-end">
