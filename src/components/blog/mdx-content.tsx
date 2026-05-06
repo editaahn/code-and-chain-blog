@@ -2,8 +2,9 @@ import type { MDXComponents } from "mdx/types";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
 import { highlight } from "sugar-high";
+import type { ReactNode } from "react";
 
-const components = {
+const baseComponents = {
   a: ({ href, rel, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
     const isExternalLink = Boolean(href && /^(https?:)?\/\//.test(href));
     const safeRel = rel ? `${rel} noopener noreferrer` : "noopener noreferrer";
@@ -76,7 +77,81 @@ interface MDXContentProps {
   content: string;
 }
 
+function extractTextFromNode(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node);
+  }
+
+  if (Array.isArray(node)) {
+    return node.map(extractTextFromNode).join("");
+  }
+
+  if (!node || typeof node !== "object" || !("props" in node)) {
+    return "";
+  }
+
+  const childNode = (node as { props?: { children?: ReactNode } }).props?.children;
+  return extractTextFromNode(childNode);
+}
+
+function slugifyHeading(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
+
+function createHeadingComponents() {
+  const slugCount = new Map<string, number>();
+
+  const createHeading = (level: 1 | 2 | 3 | 4 | 5 | 6) => {
+    const HeadingComponent = ({
+      children,
+      id,
+      ...props
+    }: React.HTMLAttributes<HTMLHeadingElement>) => {
+      const headingText = extractTextFromNode(children);
+      const baseSlug = slugifyHeading(headingText) || `heading-${level}`;
+      const currentCount = slugCount.get(baseSlug) ?? 0;
+      slugCount.set(baseSlug, currentCount + 1);
+
+      const headingId =
+        id ?? (currentCount === 0 ? baseSlug : `${baseSlug}-${currentCount}`);
+
+      const Tag = `h${level}` as const;
+      return (
+        <Tag
+          id={headingId}
+          {...props}
+          style={{ scrollMarginTop: "5.5rem", ...props.style }}
+        >
+          {children}
+        </Tag>
+      );
+    };
+
+    HeadingComponent.displayName = `MDXHeadingH${level}`;
+    return HeadingComponent;
+  };
+
+  return {
+    h1: createHeading(1),
+    h2: createHeading(2),
+    h3: createHeading(3),
+    h4: createHeading(4),
+    h5: createHeading(5),
+    h6: createHeading(6),
+  } satisfies MDXComponents;
+}
+
 export async function MDXContent({ content }: MDXContentProps) {
+  const components: MDXComponents = {
+    ...baseComponents,
+    ...createHeadingComponents(),
+  };
+
   return (
     <div className="mdx-content">
       <MDXRemote

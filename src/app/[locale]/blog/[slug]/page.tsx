@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/routing";
 import { Calendar, Clock, ArrowLeft } from "lucide-react";
 import { MDXContent } from "@/components/blog/mdx-content";
+import { TocIndicator } from "@/components/blog/toc-indicator";
 
 interface BlogPostPageProps {
   params: Promise<{ locale: string; slug: string }>;
@@ -33,6 +34,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="max-w-4xl mx-auto">
+        <TocIndicator label={locale === "ko" ? "목차" : "Contents"} />
+
         {/* Back Button */}
         <div className="mb-8">
           <Button variant="ghost" asChild>
