@@ -1,0 +1,185 @@
+---
+title: "Flutter 렌더링 엔진 비교, Impeller vs Skia"
+description: "Flutter의 기존 렌더링 엔진 Skia가 최근 플러터 로드맵을 기점으로 모바일에서 본격적인 fade-out 단계에 접어든다. 그 기념으로 Impeller의 고안 배경부터 현황까지 훑어보자."
+date: "2026-05-17"
+category: "product-development"
+subcategory: "frontend"
+tags: ["flutter", "rendering engine", "Impeller", "Skia"]
+published: true
+---
+
+Flutter는 출시 초기부터 "모든 플랫폼에서 동일한 픽셀을 직접 그린다"는 철학으로 인기를 끌었다. 그 중심에는 구글이 관리하던 강력한 2D 그래픽 엔진인 **Skia**가 있었다. 하지만 Flutter 팀은 모바일에서 기존 Skia 중심 렌더링 구조를 걷어내고 **Impeller**라는 새로운 엔진을 직접 구축했다.
+
+Flutter 팀은 왜 이런 모험을 감행했을까? 최근 플러터 로드맵을 기점(Flutter 3.47 버전으로 예상)으로 모바일에서 Skia 기반 렌더링 경로가 본격적인 fade-out 단계에 접어들었다. iOS는 이미 2023년 Impeller가 사실상의 표준이 되었고, Android 역시 일부 기기 환경을 위한 fallback만 남긴 채 Impeller 중심 구조로 안착되었다. Flutter 입장에서 이는 단순한 엔진 교체가 아니라, 렌더링 철학 자체를 바꾸는 수준의 변화다. 변화의 이면에는 그래픽 API의 역사와 현대 하드웨어의 발전 궤적이 고스란히 담겨 있다. 따라서, 내용이 길어지더라도 디테일한 내막을 하나씩 살펴보았다.
+
+---
+
+# 1. Flutter의 아킬레스건, Shader Compilation Jank
+
+Flutter 앱에서 어떤 애니메이션이 처음으로 작동할 때 버벅이는 현상을 Shader Compilation Jank라고 부른다.
+
+## Shader?
+
+GPU가 화면의 그래픽 효과를 계산하기 위해 실행하는 작은 프로그램이다.
+
+## Shader Compilation Jank
+
+- 배경지식에 도움되는 영상: [[Google I/O 2023] Introducing Impeller - Flutter's new rendering engine](https://youtu.be/vd5NqS01rlA?si=00-9c_GfxMirxRmB)
+
+Shader를 컴파일하는 건 아주 비싼 작업인데, 기존 Skia 엔진은 이 작업을 runtime에 실시간으로 진행했다. 새로운 페이지로 이동하거나 처음 보는 애니메이션이 실행되는 순간, 그래픽 드라이버는 그 즉시 Shader를 컴파일하느라 분주해진다. 그 결과, 화면을 주사율만큼 그려내는 타이밍을 놓치게 되고, 사용자는 화면이 버벅인다고 느끼게 되는 것이다.
+
+한 번 컴파일된 Shader는 캐시에 저장되므로 그 다음 실행할 때부터는 부드럽게 작동하지만, **첫 실행 시의 버벅임**은 사용자 체감 상 치명적인 부분이었다.
+
+Flutter 팀은 새로운 엔진을 만들기 전, 기존 Skia 구조 위에서 이 캐시 시스템을 고도화하여 문제를 해결하려 노력을 기울였다. 대표적인 시도가 **Shader Warm-up** 기술이었다.
+
+### Skia Shader Warm-up의 한계
+
+- [[Flutter GitHub] Reduce Shader compilation jank using SkSL warm up](https://github.com/flutter/flutter/wiki/Reduce-Shader-compilation-jank-using-SkSL-warm-up/45f04019852602b8f3b01e32ec90026e7bf35e2b)
+  (이 report에서 특히 Limitation 부분을 눈여겨 볼 필요가 있다. 언급된 한계점을 극복하고자 하는 시도가 Impeller에서 이어지기 때문이다.)
+
+Flutter 팀은 Skia 체제에서 임시방편을 시도하는데, 개발자가 앱을 빌드할 때 앱에 존재하는 모든 애니메이션과 그래픽 효과를 미리 한 번씩 구동시켜 그 과정에서 생성된 Shader 캐시 파일(`*.sksl`)을 앱 패키지 안에 강제로 넣고 배포하는 방식이었다. 하지만 이 방식은 다음과 같은 한계들이 있었다.
+
+- 개발자 피로도 극대화: 새로운 기능이나 애니메이션이 추가될 때마다 개발자가 '직접' 기기를 PC에 연결하고 모든 화면을 직접 넘겨가며 Shader를 수동으로 수집(Profiling)해야 했다.
+- 기기 파편화: A 스마트폰에서 수집한 Shader 캐시는 칩셋이 다른 B 스마트폰이나 OS 버전이 다른 기기에서는 사용할 수 없다. 기기마다 그래픽 드라이버가 Shader를 기계어로 번역하는 방식이 완전히 달랐기 때문이다.
+
+결국 이 방법은 근본적인 치료가 아니었으므로 결국 문제를 더 깊은 곳인 Skia 엔진의 뿌리에서 찾게 된다.
+
+---
+
+# 2. 레거시: OpenGL ES와 Skia
+
+## OpenGL ES와 그 한계
+
+OpenGL ES는 GPU와 통신하기 위한 그래픽 API이다. OpenGL은 1992년의 오리지널 기술이고, 2003년 모바일 및 가전기기 버전으로 경량화한 파생 버전이 OpenGL ES(Embedded Systems)이다.
+
+- **Skia (2D 그래픽 라이브러리):** 설계도를 그리는 두뇌 (ex. "x, y 좌표에 지름 20짜리 빨간 원을 그려줘")
+- **OpenGL ES (그래픽 API):** Skia가 만든 그래픽 명령을 GPU 제조사 드라이버를 통해 GPU에 전달하는 표준 인터페이스
+
+이 구조는 수년간 잘 작동했지만, **OpenGL이 탄생한 1992년의 아키텍처**라는 점이 현대에 와서 문제가 되었다.
+
+OpenGL ES의 가장 큰 한계는 **싱글 스레드 중심 구조**였다는 점이다. 스마트폰 CPU의 코어가 8개, 16개로 늘어난 현대 환경에서 OpenGL ES를 쓰면 다른 코어들이 아무리 놀고 있어도 단 하나의 코어만 GPU와 통신할 수 있는 **심각한 병목 현상**이 발생하게 된다.
+
+### 왜 싱글 스레드일까?
+
+- 1990년대 초반, 컴퓨터는 **CPU 코어가 단 1개뿐**이었다. 멀티코어 CPU가 없던 시절의 유산으로써, 여러 스레드가 동시에 GPU에 명령을 내린다는 개념 자체가 필요 없었다.
+- **거대한 하나의 State Machine:** OpenGL은 내부에 거대한 전역 변수들을 두고 순차적으로 동작한다. 예를 들어 "지금부터 브러시 색상은 [빨간색]이야"라고 상태를 바꾸고 "원을 그려"라고 명령하는 방식이다. 만약 여러 스레드가 동시에 이 전역 상태를 바꾸려고 하면 데이터가 오염되는 **Data Race**가 발생한다. 이를 막기 위해 OpenGL은 단 하나의 스레드(메인 스레드)만 자신을 제어할 수 있도록 묶어두는 컨텍스트 독점 체제를 선택했다.
+
+## Flutter에서 Skia 사용의 한계로 이어지는데..
+
+Skia는 2000년대 초반에 설계되어 Google에 인수된 후 OpenGL ES 파이프라인에 맞춰 최적화된 엔진이다.
+
+Flutter의 Skia 기반 렌더링 구조는 runtime Shader 생성과 싱글 스레드 중심 설계에 크게 의존하고 있었다. 아무리 Vulkan, Metal 같은 멀티스레딩이 가능한 차세대 그래픽 API가 등장해도 **Flutter가 요구하는 프레임 렌더링 수준과 멀티스레드 활용 측면에서 구조적 한계가 있었다.**
+
+---
+
+# 3. 차세대 그래픽 API: Vulkan API와 Metal
+
+현대의 멀티코어 CPU와 GPU를 더 효율적으로 활용하기 위해 등장한 것이 바로 **Vulkan**과 **Metal** API이다. (Microsoft 진영의 DirectX 12와 궤를 같이함)
+
+OpenGL은 많은 것을 알아서 해주는 오토 기어라면, 이들은 하드웨어를 직접 제어하는 수동 기어이다.
+
+> **OpenGL is like a car with automatic gears.** You don’t need to know how the engine works — just press gas and go.<br/>
+> **Vulkan is a racecar with manual transmission and no safety net.** Harder to drive, but gives you complete control over the ride.
+> [[출처]](https://medium.com/fossible/why-vulkan-is-better-but-you-might-want-opengl-anyway-f797cf9cfaea)
+
+## Vulkan과 Metal의 핵심 혁신 기술
+
+### 1) **Low-Level Control**
+
+OpenGL이 드라이버 내부에서 자동으로 처리하던 작업을 Vulkan, Metal에서는 앱(엔진)이 직접 제어한다. 그 결과 드라이버 오버헤드가 줄고 CPU 활용 효율이 높아진다.
+
+### 2) **Multi-Threading**
+
+Graphics API 내부에 전역 상태 머신이 없다. CPU의 멀티 코어가 **각각 독립적으로 GPU에 보낼 명령(Command Buffer)을 동시에 만들어서 한 번에 GPU로 밀어 넣을 수 있다.**
+
+### 3) **사전 컴파일 Shader 지원**
+
+앱이 실행된 후에 Shader를 컴파일하지 않고, 빌드 타임에 **중간 이진 파일(Binary) 형태로 컴파일을 끝내 둔다.**
+
+- **Vulkan:** 크로스 플랫폼 표준인 **SPIR-V** 포맷을 사용해 Shader를 미리 컴파일
+- **Metal:** Apple이 자체 최적화한 MSL(Metal Shading Language)을 거쳐 중간 표현식(AIR)이나 컴파일된 라이브러리 파일(`.metallib`) 형태로 미리 만들어 두어 런타임 컴파일로 인한 jank를 크게 줄인다.
+
+## Skia를 버려야 했던 이유
+
+### 1) 차세대 API를 써도 Shader를 runtime에 빌드하던 Skia
+
+Vulkan과 Metal 자체는 사전 컴파일 인프라를 완벽히 지원한다. 그러나 Skia 엔진은 구조적으로 앱이 실행되어 런타임에 유저가 화면을 조작할 때 비로소 Shader 코드를 동적으로 생성하고 컴파일을 요청하는 방식을 고수했다. 최신 그래픽 파이프라인을 연결했음에도 "런타임에 컴파일러를 깨워서 무거운 연산을 시킨다"는 Skia의 태생적 한계 때문에 iOS(Metal)와 안드로이드(Vulkan) 모두에서 jank는 똑같이 발생했다.
+
+### 2) 활용하지 못하는 멀티스레딩
+
+Vulkan과 Metal의 가장 큰 장점은 멀티 스레딩이다. 그러나 Skia는 싱글 스레드 친화적 구조였기 때문에, 최신 API를 붙여도 멀티코어 CPU를 제대로 활용하지 못하고 여전히 하나의 스레드에 병목이 걸렸다.
+
+결국 Skia라는 엔진 자체를 걷어내지 않으면 최신 그래픽 API의 잠재력을 충분히 누릴 수 없다는 결론에 이르렀다. (참고로 Graphite라는 Skia의 차세대 엔진이 멀티 스레딩을 지원하긴 하나 Impeller를 개발하기 시작하던 2021년 경에는 극초기 단계였다.)
+
+---
+
+# 4. Impeller의 탄생
+
+Impeller의 핵심 개선점은 아래와 같다.
+
+## 1) 예측 가능한 성능 (런타임 컴파일 없음)
+
+Impeller의 가장 큰 성취는 **Shader Compilation Jank의 근본적 해결**이다. Impeller는 앱을 빌드하는 시점에 앱 내에 필요한 '모든' Shader 서브셋을 미리 컴파일하여 바이너리 형태로 패키징한다. (강조: 모든 Shader를 빌드 타임에 컴파일하는 것이 핵심 아키텍처이다. 런타임에는 컴파일러 자체를 구동하지 않는다.)
+
+- iOS 빌드 시에는 **Metal Shader**로, 안드로이드 빌드 시에는 Vulkan용 **SPIR-V**로 미리 만들어진다.
+- 모든 shader pipeline을 빌드 타임에 준비하므로 Shader Compilation Jank를 크게 줄인다. 사용자는 앱을 처음 켤 때부터 60Hz/120Hz의 부드러운 프레임을 경험하게 된다. 수동 캐시 수집(`*.sksl`) 과정도 완전히 역사 속으로 사라졌다.
+
+## 2) 멀티스레딩 활용
+
+싱글 스레드 병목에 갇혀 있던 Skia와 달리, Impeller는 Vulkan, Metal 환경을 기반으로 현대 하드웨어의 멀티코어 이점을 극대화한다.
+
+- UI 스레드, 래스터 스레드 외에도 대규모 그래픽 명령을 처리할 때 다중 스레드가 동시에 GPU 명령 버퍼를 생성하여 GPU로 요청할 수 있다.
+- 메인 스레드 병목 가능성을 크게 줄였고, 복잡한 씬에서 프레임 안정성이 향상되었다.
+
+## 3) 최적화된 메모리 및 자원 관리
+
+Impeller는 최신 모바일 GPU의 하드웨어 특성을 직접 제어하도록 설계되었다. VRAM(비디오 램) 할당 및 텍스처 업로드, 그래픽 파이프라인 state 변경 횟수를 최소화하여 하드웨어 오버헤드를 줄인다.
+
+## 4) 신속하고 유연한 모던 아키텍처
+
+Skia는 크롬, 안드로이드 OS 등 구글 내 수많은 거대 프로젝트가 공유하는 범용 엔진이었다. 반면 Impeller는 오직 **Flutter 프레임워크만을 위해 타겟팅된 경량 엔진**이다.
+
+- 선언형 레이아웃 계층을 2D 그래픽 명령으로 전환하는 과정이 훨씬 단순하고 직관적이다.
+- 타 프로젝트와의 의존성이 없기 때문에 최신 그래픽 기술 트렌드나 Flutter 팀이 필요한 최적화 요구사항을 엔진 소스 코드에 즉각적으로 반영할 수 있는 기동성을 확보했다.
+
+---
+
+# 5. Skia와 Impeller 간 분기 처리
+
+구글은 Vulkan과 Metal이라는 강력한 차세대 API를 완벽하게 활용하기 위해 전용 엔진인 **Impeller**를 개발했다. 다만 안드로이드 생태계는 너무 많은 기기 타입으로 파편화되어있다. 출시된 지 오래된 구형 스마트폰은 Vulkan을 지원하지 않고 오직 OpenGL ES만 지원한다.
+
+여기서 Flutter는 과도기적 **fallback 전략**을 취한다. 사용자가 앱을 부팅하는 시점에 엔진이 결정된다.
+
+```
+[사용자가 Flutter 앱 실행]
+       │
+       ▼
+[Flutter 런타임 엔진 초기화]
+       │
+       ├─► 기기가 iOS/macOS인가? ──► [ Impeller 엔진 (Metal 백엔드) 고정 활성화 ]
+       │
+       └─► 기기가 Android인가?
+               │
+               ├─► Vulkan API를 안정적으로 지원하는가? ──► [ Impeller 엔진 (Vulkan 백엔드) 활성화 ]
+               └─► Vulkan 미지원 구형 기기인가?       ──► [ Skia 엔진 (OpenGL 백엔드) 활성화 ]
+
+```
+
+최신 기기 사용자에게는 Impeller를 통해 부드러운 경험을 제공하면서, 구형 기기 사용자에게는 앱이 튕기지 않는 안정성을 동시에 제공할 수 있었다.
+
+---
+
+# 6. Skia는 여전히 좋은 엔진이다
+
+Flutter가 모바일에서 Skia를 쓰지 않게 된 이유는 나쁜 엔진이어서가 아니라, "모바일에서 60Hz/120Hz 애니메이션을 jank 없이 보여주어야 하는 선언형 UI 프레임워크"라는 Flutter만의 극단적인 요구사항을 맞추기에 당시 Skia의 구조가 맞지 않았기 때문이다.
+
+- Skia는 현재 Vulkan, Metal 중심으로 설계된 Graphite라는 차세대 엔진으로 멀티 스레딩을 지원한다. (레거시는 Ganesh라는 렌더러이며 아직 Graphite로 전환 진행 중이다.) 위에도 언급했듯이, Impeller 개발 초기 시점에는 Graphite가 극초기 단계였으며, Flutter만을 위한 엔진에 대한 니즈가 있었으므로 Impeller 엔진 개발에 착수했다.
+- 웹 브라우징(Chrome이나 Chromium 오픈소스를 기반으로 만들어진 브라우저들), 데스크탑 프로그램, 일반적인 Android OS UI 환경에서는 Skia의 2D 렌더링 성능과 신뢰도가 여전히 업계 최고 수준이다.
+- 최근 Shopify가 주도하여 Skia를 React Native 네이티브단에 직접 붙여 GPU로 렌더링하는 라이브러리를 개발해 큰 성능 향상을 보여주기도 했다.
+
+---
+
+## 부가 레퍼런스
+
+- [Why Vulkan Is Better (But You Might Want OpenGL Anyway)](https://medium.com/fossible/why-vulkan-is-better-but-you-might-want-opengl-anyway-f797cf9cfaea)
+- [Flutter GitHub - Milestone](https://github.com/flutter/flutter/milestones)
