@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import { Code, Key, Coffee } from "lucide-react";
 import { CATEGORIES } from "@/lib/categories";
 import LatestPosts from "@/components/blog/latest-posts";
+import { buildPageMetadata } from "@/lib/seo";
 
 const HOME_CATEGORY_BLOCKS: {
   key: keyof typeof CATEGORIES;
@@ -17,6 +19,28 @@ const HOME_CATEGORY_BLOCKS: {
 
 interface HomePageProps {
   params: Promise<{ locale: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: HomePageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "seo" });
+  const title = t("title");
+  const metadata = buildPageMetadata({
+    title,
+    description: t("description"),
+    locale,
+  });
+
+  return {
+    ...metadata,
+    title: { absolute: title },
+    openGraph: {
+      ...metadata.openGraph,
+      title,
+    },
+  };
 }
 
 export default async function Home({ params }: HomePageProps) {

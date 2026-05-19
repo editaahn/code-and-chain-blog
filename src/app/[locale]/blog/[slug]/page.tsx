@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { getPostBySlug, getAllPosts } from "@/lib/blog";
@@ -7,6 +8,8 @@ import { Link } from "@/i18n/routing";
 import { Calendar, Clock, ArrowLeft } from "lucide-react";
 import { MDXContent } from "@/components/blog/mdx-content";
 import { TocIndicator } from "@/components/blog/toc-indicator";
+import { buildPageMetadata } from "@/lib/seo";
+import { routing } from "@/i18n/routing";
 
 interface BlogPostPageProps {
   params: Promise<{ locale: string; slug: string }>;
@@ -20,6 +23,32 @@ export async function generateStaticParams() {
     ...koPosts.map((post) => ({ locale: "ko", slug: post.slug })),
     ...enPosts.map((post) => ({ locale: "en", slug: post.slug })),
   ];
+}
+
+export async function generateMetadata({
+  params,
+}: BlogPostPageProps): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const post = getPostBySlug(slug, locale);
+
+  if (!post) {
+    return {};
+  }
+
+  const alternateLocales = routing.locales.filter(
+    (availableLocale) => getPostBySlug(slug, availableLocale) !== null,
+  );
+
+  return buildPageMetadata({
+    title: post.title,
+    description: post.description,
+    locale,
+    path: `/blog/${slug}`,
+    type: "article",
+    publishedTime: post.date,
+    tags: post.tags,
+    alternateLocales,
+  });
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {

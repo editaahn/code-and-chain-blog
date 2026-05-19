@@ -1,9 +1,26 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { getAllPosts } from "@/lib/blog";
 import { BlogCard } from "@/components/blog/blog-card";
+import { buildPageMetadata } from "@/lib/seo";
 
 interface BlogPageProps {
   params: Promise<{ locale: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: BlogPageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const tBlog = await getTranslations({ locale, namespace: "blog" });
+  const tSeo = await getTranslations({ locale, namespace: "seo" });
+
+  return buildPageMetadata({
+    title: tBlog("title"),
+    description: tSeo("description"),
+    locale,
+    path: "/blog",
+  });
 }
 
 export default async function BlogPage({ params }: BlogPageProps) {

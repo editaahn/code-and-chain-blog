@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { getBaseUrl, SITE_NAME } from "@/lib/seo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,7 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Code & Chain - Product Development & Crypto Blog",
+  metadataBase: new URL(getBaseUrl()),
+  title: {
+    default: `${SITE_NAME} - Product Development & Crypto Blog`,
+    template: `%s | ${SITE_NAME}`,
+  },
   description:
     "A personal blog providing in-depth analysis and insights on product development and cryptocurrency technology.",
 };

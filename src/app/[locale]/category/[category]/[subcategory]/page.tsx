@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import {
   getPostsByCategory,
@@ -8,6 +9,7 @@ import { BlogCard } from "@/components/blog/blog-card";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/routing";
 import { ArrowLeft, Folder } from "lucide-react";
+import { buildPageMetadata } from "@/lib/seo";
 
 interface SubcategoryPageProps {
   params: Promise<{ locale: string; category: string; subcategory: string }>;
@@ -31,6 +33,23 @@ export async function generateStaticParams() {
   });
 
   return params;
+}
+
+export async function generateMetadata({
+  params,
+}: SubcategoryPageProps): Promise<Metadata> {
+  const { locale, category, subcategory } = await params;
+  const t = await getTranslations({ locale });
+  const tSeo = await getTranslations({ locale, namespace: "seo" });
+  const categoryTitle = t(`categories.${category}`);
+  const subcategoryTitle = t(`categories.${subcategory}`);
+
+  return buildPageMetadata({
+    title: subcategoryTitle,
+    description: `${categoryTitle} / ${subcategoryTitle} - ${tSeo("description")}`,
+    locale,
+    path: `/category/${category}/${subcategory}`,
+  });
 }
 
 export default async function SubcategoryPage({

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import {
   getPostsByCategory,
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@/i18n/routing";
 import { ArrowLeft, Folder } from "lucide-react";
+import { buildPageMetadata } from "@/lib/seo";
 
 interface CategoryPageProps {
   params: Promise<{ locale: string; category: string }>;
@@ -21,6 +23,22 @@ export async function generateStaticParams() {
     ...allCategories.map((category) => ({ locale: "ko", category })),
     ...allCategories.map((category) => ({ locale: "en", category })),
   ];
+}
+
+export async function generateMetadata({
+  params,
+}: CategoryPageProps): Promise<Metadata> {
+  const { locale, category } = await params;
+  const t = await getTranslations({ locale });
+  const tSeo = await getTranslations({ locale, namespace: "seo" });
+  const categoryTitle = t(`categories.${category}`);
+
+  return buildPageMetadata({
+    title: categoryTitle,
+    description: `${categoryTitle} - ${tSeo("description")}`,
+    locale,
+    path: `/category/${category}`,
+  });
 }
 
 export default async function CategoryPage({ params }: CategoryPageProps) {

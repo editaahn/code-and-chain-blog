@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Github, Linkedin } from "lucide-react";
+import { buildPageMetadata } from "@/lib/seo";
 
 type AboutPageProps = {
   params: Promise<{ locale: string }>;
@@ -13,7 +14,14 @@ export async function generateMetadata({
 }: AboutPageProps): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "aboutPage" });
-  return { title: t("metaTitle") };
+  const tSeo = await getTranslations({ locale, namespace: "seo" });
+
+  return buildPageMetadata({
+    title: t("metaTitle"),
+    description: tSeo("description"),
+    locale,
+    path: "/about",
+  });
 }
 
 export default async function AboutPage({ params }: AboutPageProps) {
