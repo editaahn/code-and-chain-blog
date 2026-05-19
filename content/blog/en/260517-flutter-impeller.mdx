@@ -10,7 +10,9 @@ published: true
 
 Since its initial release, Flutter has gained popularity based on its core philosophy: "rendering every pixel identically across all platforms." At the center of this capability was **Skia**, a powerful 2D graphics engine managed by Google. However, the Flutter team has chosen to phase out the legacy Skia-based rendering architecture on mobile in favor of a custom-built engine called **Impeller**.
 
-Why did the Flutter team undertake this transition? As of the recent Flutter roadmap (expected to take effect around Flutter version 3.47), the Skia-based rendering path on mobile has officially entered a fade-out stage. On iOS, Impeller became the de facto standard in 2023, and Android has settled into an Impeller-centric structure, retaining Skia only as a fallback for specific legacy hardware environments. For Flutter, this is not a simple engine replacement; it represents a fundamental shift in rendering philosophy. The reasoning behind this evolution is deeply tied to the history of graphics APIs and modern hardware advancement. This article examines the underlying technical factors in detail.
+As of the recent Flutter roadmap (expected to take effect around Flutter version 3.47), the Skia-based rendering path on mobile has officially entered a fade-out stage. On iOS, Impeller became the de facto standard in 2023, and Android has settled into an Impeller-centric structure, retaining Skia only as a fallback for specific legacy hardware environments.
+
+Why did the Flutter team undertake this transition? For Flutter, this is not a simple engine replacement; it represents a fundamental shift in rendering philosophy. The reasoning behind this evolution is deeply tied to the history of graphics APIs and modern hardware advancement. This article examines the underlying technical factors in detail.
 
 ---
 
