@@ -7,6 +7,8 @@ import { Code, Key, Coffee } from "lucide-react";
 import { CATEGORIES } from "@/lib/categories";
 import LatestPosts from "@/components/blog/latest-posts";
 import { buildPageMetadata } from "@/lib/seo";
+import { buildWebSiteJsonLd } from "@/lib/json-ld";
+import { JsonLd } from "@/components/seo/json-ld";
 
 const HOME_CATEGORY_BLOCKS: {
   key: keyof typeof CATEGORIES;
@@ -46,9 +48,14 @@ export async function generateMetadata({
 export default async function Home({ params }: HomePageProps) {
   const { locale } = await params;
   const t = await getTranslations();
+  const tSeo = await getTranslations({ locale, namespace: "seo" });
 
   return (
-    <div className="container mx-auto px-4 py-16">
+    <>
+      <JsonLd
+        data={buildWebSiteJsonLd(locale, tSeo("description"))}
+      />
+      <div className="container mx-auto px-4 py-16">
       {/* Hero Section */}
       <section className="text-center space-y-8 mb-20">
         <div className="space-y-4">
@@ -136,5 +143,6 @@ export default async function Home({ params }: HomePageProps) {
         </Button>
       </section>
     </div>
+    </>
   );
 }

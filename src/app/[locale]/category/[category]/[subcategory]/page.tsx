@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/routing";
 import { ArrowLeft, Folder } from "lucide-react";
 import { buildPageMetadata } from "@/lib/seo";
+import { buildCollectionPageJsonLd } from "@/lib/json-ld";
+import { JsonLd } from "@/components/seo/json-ld";
 
 interface SubcategoryPageProps {
   params: Promise<{ locale: string; category: string; subcategory: string }>;
@@ -65,8 +67,30 @@ export default async function SubcategoryPage({
     return t(`categories.${subcat}`);
   };
 
+  const categoryTitle = getCategoryTitle(category);
+  const subcategoryTitle = getSubcategoryTitle(subcategory);
+  const homeLabel = locale === "ko" ? "홈" : "Home";
+  const description = `${categoryTitle} / ${subcategoryTitle} - ${t("seo.description")}`;
+
   return (
-    <div className="container mx-auto px-4 py-12">
+    <>
+      <JsonLd
+        data={buildCollectionPageJsonLd(
+          locale,
+          subcategoryTitle,
+          description,
+          `/category/${category}/${subcategory}`,
+          [
+            { name: homeLabel, path: "" },
+            { name: categoryTitle, path: `/category/${category}` },
+            {
+              name: subcategoryTitle,
+              path: `/category/${category}/${subcategory}`,
+            },
+          ],
+        )}
+      />
+      <div className="container mx-auto px-4 py-12">
       <div className="mb-8 flex flex-wrap gap-4">
         <Button variant="ghost" asChild>
           <Link href="/" className="gap-2">
@@ -121,5 +145,6 @@ export default async function SubcategoryPage({
         </div>
       )}
     </div>
+    </>
   );
 }

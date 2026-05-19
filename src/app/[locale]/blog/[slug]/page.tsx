@@ -10,6 +10,8 @@ import { MDXContent } from "@/components/blog/mdx-content";
 import { TocIndicator } from "@/components/blog/toc-indicator";
 import { buildPageMetadata } from "@/lib/seo";
 import { routing } from "@/i18n/routing";
+import { buildBlogPostingJsonLd } from "@/lib/json-ld";
+import { JsonLd } from "@/components/seo/json-ld";
 
 interface BlogPostPageProps {
   params: Promise<{ locale: string; slug: string }>;
@@ -60,8 +62,18 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     notFound();
   }
 
+  const homeLabel = locale === "ko" ? "홈" : "Home";
+
   return (
-    <div className="container mx-auto px-4 py-12">
+    <>
+      <JsonLd
+        data={buildBlogPostingJsonLd(post, locale, [
+          { name: homeLabel, path: "" },
+          { name: t("title"), path: "/blog" },
+          { name: post.title, path: `/blog/${slug}` },
+        ])}
+      />
+      <div className="container mx-auto px-4 py-12">
       <div className="max-w-4xl mx-auto">
         <TocIndicator label={locale === "ko" ? "목차" : "Contents"} />
 
@@ -132,5 +144,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         </footer>
       </div>
     </div>
+    </>
   );
 }

@@ -3,6 +3,8 @@ import { getTranslations } from "next-intl/server";
 import { getAllPosts } from "@/lib/blog";
 import { BlogCard } from "@/components/blog/blog-card";
 import { buildPageMetadata } from "@/lib/seo";
+import { buildBlogJsonLd } from "@/lib/json-ld";
+import { JsonLd } from "@/components/seo/json-ld";
 
 interface BlogPageProps {
   params: Promise<{ locale: string }>;
@@ -26,10 +28,15 @@ export async function generateMetadata({
 export default async function BlogPage({ params }: BlogPageProps) {
   const { locale } = await params;
   const t = await getTranslations("blog");
+  const tSeo = await getTranslations({ locale, namespace: "seo" });
   const posts = getAllPosts(locale);
 
   return (
-    <div className="container mx-auto px-4 py-12">
+    <>
+      <JsonLd
+        data={buildBlogJsonLd(locale, tSeo("description"), posts)}
+      />
+      <div className="container mx-auto px-4 py-12">
       <div className="mb-12">
         <h1 className="text-4xl font-bold mb-4">{t("title")}</h1>
         <p className="text-xl text-muted-foreground">{t("allPosts")}</p>
@@ -47,5 +54,6 @@ export default async function BlogPage({ params }: BlogPageProps) {
         </div>
       )}
     </div>
+    </>
   );
 }

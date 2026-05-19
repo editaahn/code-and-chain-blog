@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "@/i18n/routing";
 import { ArrowLeft, Folder } from "lucide-react";
 import { buildPageMetadata } from "@/lib/seo";
+import { buildCollectionPageJsonLd } from "@/lib/json-ld";
+import { JsonLd } from "@/components/seo/json-ld";
 
 interface CategoryPageProps {
   params: Promise<{ locale: string; category: string }>;
@@ -55,8 +57,25 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     return t(`categories.${subcat}`);
   };
 
+  const categoryTitle = getCategoryTitle(category);
+  const homeLabel = locale === "ko" ? "홈" : "Home";
+  const description = `${categoryTitle} - ${t("seo.description")}`;
+
   return (
-    <div className="container mx-auto px-4 py-12">
+    <>
+      <JsonLd
+        data={buildCollectionPageJsonLd(
+          locale,
+          categoryTitle,
+          description,
+          `/category/${category}`,
+          [
+            { name: homeLabel, path: "" },
+            { name: categoryTitle, path: `/category/${category}` },
+          ],
+        )}
+      />
+      <div className="container mx-auto px-4 py-12">
       <div className="mb-8">
         <Button variant="ghost" asChild>
           <Link href="/" className="gap-2">
@@ -111,5 +130,6 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         </div>
       )}
     </div>
+    </>
   );
 }
