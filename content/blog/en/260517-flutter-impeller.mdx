@@ -1,0 +1,185 @@
+---
+title: "Comparing Flutter Rendering Engines: Impeller vs. Skia"
+description: "Flutter's legacy rendering engine, Skia, is entering a definitive fade-out phase on mobile starting with the recent Flutter roadmap. Let's explore the background, rationale, and current status of Impeller."
+date: "2026-05-17"
+category: "product-development"
+subcategory: "frontend"
+tags: ["flutter", "rendering engine", "Impeller", "Skia"]
+published: true
+---
+
+Since its initial release, Flutter has gained popularity based on its core philosophy: "rendering every pixel identically across all platforms." At the center of this capability was **Skia**, a powerful 2D graphics engine managed by Google. However, the Flutter team has chosen to phase out the legacy Skia-based rendering architecture on mobile in favor of a custom-built engine called **Impeller**.
+
+Why did the Flutter team undertake this transition? As of the recent Flutter roadmap (expected to take effect around Flutter version 3.47), the Skia-based rendering path on mobile has officially entered a fade-out stage. On iOS, Impeller became the de facto standard in 2023, and Android has settled into an Impeller-centric structure, retaining Skia only as a fallback for specific legacy hardware environments. For Flutter, this is not a simple engine replacement; it represents a fundamental shift in rendering philosophy. The reasoning behind this evolution is deeply tied to the history of graphics APIs and modern hardware advancement. This article examines the underlying technical factors in detail.
+
+---
+
+# 1. Flutter's Achilles' Heel: Shader Compilation Jank
+
+The stuttering or dropped frames that occur the first time an animation runs in a Flutter app is known as Shader Compilation Jank.
+
+## What is a Shader?
+
+A shader is a small program executed by the GPU to calculate graphical effects on the screen.
+
+## Shader Compilation Jank
+
+- Reference Video: [[Google I/O 2023] Introducing Impeller - Flutter's new rendering engine](https://youtu.be/vd5NqS01rlA?si=00-9c_GfxMirxRmB)
+
+Compiling shaders is a computationally expensive operation. The legacy Skia engine performed this compilation in real time during runtime. When a user navigated to a new page or triggered an unfamiliar animation, the graphics driver compiled the required shader immediately. This process often caused the engine to miss the frame budget required by the device's refresh rate, resulting in visible jank.
+
+Once a shader is compiled, it is saved to a cache, allowing subsequent executions to run smoothly. However, this **first-run stutter** presented a significant issue for user experience.
+
+Prior to developing a new engine, the Flutter team attempted to resolve this problem by optimizing the caching system within the existing Skia framework. The primary initiative was **Shader Warm-up**.
+
+### Limitations of Skia Shader Warm-up
+
+- Reference Issue: [[Flutter GitHub] Reduce Shader compilation jank using SkSL warm up](https://github.com/flutter/flutter/wiki/Reduce-Shader-compilation-jank-using-SkSL-warm-up/45f04019852602b8f3b01e32ec90026e7bf35e2b)
+  (The "Limitations" section of this report highlights the specific challenges that Impeller was subsequently designed to address.)
+
+The shader warm-up approach served as a temporary workaround. During the build process, developers ran all animations and graphical effects within the app to generate a shader cache file (`*.sksl`), which was then bundled into the application package. However, this method introduced several limitations:
+
+- High Developer Overhead: Every time a new feature or animation was introduced, developers had to connect a physical device to a workstation and manually trigger every screen and state to collect (profile) the shaders.
+- Device Fragmentation: A shader cache collected on a specific smartphone chipset could not be reused on devices with different chipsets or operating system versions. This is because graphics drivers translate shaders into machine code differently across hardware configurations.
+
+Because this method did not address the root cause, the development team looked deeper into the foundational architecture of the Skia engine.
+
+---
+
+# 2. Legacy Architecture: OpenGL ES and Skia
+
+## OpenGL ES and Its Constraints
+
+OpenGL ES is a graphics API used to communicate with the GPU. While the original OpenGL specification dates back to 1992, OpenGL ES (Embedded Systems) was introduced in 2003 as a lightweight variant optimized for mobile and embedded devices.
+
+- **Skia (2D Graphics Library):** The component responsible for generating blueprints (e.g., "draw a red circle with a diameter of 20 at coordinates x, y").
+- **OpenGL ES (Graphics API):** The standard interface that delivers Skia's graphics commands to the GPU via the manufacturer's driver.
+
+While this architecture operated effectively for many years, the foundational architecture of OpenGL, designed in 1992, introduced bottlenecks on modern hardware.
+
+The primary limitation of OpenGL ES is its **single-threaded architecture**. In modern computing environments where mobile CPUs feature 8 to 16 cores, utilizing OpenGL ES forces communication with the GPU through a single core, leading to CPU bottlenecking while other cores remain underutilized.
+
+### Rationale Behind the Single-Threaded Design
+
+- In the early 1990s, consumer computers utilized **single-core CPUs**. The architecture predates multicore processing, meaning the concept of concurrent GPU command submission from multiple threads did not exist.
+- **Monolithic State Machine:** OpenGL operates as a massive global state machine. It processes commands sequentially: for example, changing a state to "set brush color to red" and then issuing the command "draw circle." If multiple threads attempt to modify this global state simultaneously, data races occur. To prevent this, OpenGL enforces context exclusivity, limiting control to a single thread (the main thread).
+
+## Impact on Skia in Flutter
+
+Skia was designed in the early 2000s and was subsequently optimized for the OpenGL ES pipeline after its acquisition by Google.
+
+Flutter's Skia-based rendering pipeline relied heavily on runtime shader generation and single-threaded execution. Consequently, even as modern, multithreaded graphics APIs like Vulkan and Metal emerged, architectural constraints limited Skia's ability to utilize multiple threads effectively at the frame-rate demands required by Flutter.
+
+---
+
+# 3. Next-Generation Graphics APIs: Vulkan and Metal
+
+**Vulkan** and **Metal** (alongside Microsoft's DirectX 12) were developed to utilize modern multicore CPUs and GPUs more efficiently.
+
+While OpenGL operates with a high degree of automation, modern APIs provide lower-level control over the hardware.
+
+> **OpenGL is like a car with automatic gears.** You don’t need to know how the engine works — just press gas and go.<br/>
+> **Vulkan is a racecar with manual transmission and no safety net.** Harder to drive, but gives you complete control over the ride.
+> [[Source]](https://medium.com/fossible/why-vulkan-is-better-but-you-might-want-opengl-anyway-f797cf9cfaea)
+
+## Core Innovations of Vulkan and Metal
+
+### 1) Low-Level Control
+
+Operations previously handled automatically within the graphics driver under OpenGL are explicitly managed by the application or engine in Vulkan and Metal. This reduces driver overhead and improves CPU efficiency.
+
+### 2) Multithreading
+
+These APIs do not rely on a global state machine. Multiple CPU cores can **concurrently and independently build command buffers to be submitted to the GPU.**
+
+### 3) Pre-compiled Shader Support
+
+Instead of compiling shaders at runtime, modern APIs allow shaders to be compiled into an **intermediate binary format during the build process.**
+
+- **Vulkan:** Utilizes the cross-platform **SPIR-V** format for pre-compiling shaders.
+- **Metal:** Utilizes Apple's optimized Metal Shading Language (MSL) to compile shaders into an intermediate representation (AIR) or compiled library files (`*.metallib`), reducing runtime compilation jank.
+
+## Rationale for Replacing Skia
+
+### 1) Runtime Shader Compilation Despite Modern APIs
+
+Vulkan and Metal provide native support for pre-compiled shader infrastructure. However, Skia's architecture dynamically generated and compiled shader code at runtime when a user interacted with the interface. Despite implementing modern graphics backends, the architectural requirement to invoke the compiler at runtime caused identical jank patterns on both iOS (Metal) and Android (Vulkan).
+
+### 2) Underutilized Multithreading Capabilities
+
+The primary advantage of Vulkan and Metal is concurrent command generation. Because Skia was designed around a single-threaded execution model, it could not fully leverage multicore CPUs even when paired with modern APIs, maintaining a bottleneck on a single thread.
+
+To fully utilize the capabilities of modern graphics APIs, the development team determined that replacing the Skia engine was necessary. (Note: While Skia's next-generation engine, Graphite, supports multithreading, it was in an early experimental stage when Impeller development commenced around 2021.)
+
+---
+
+# 4. The Architecture of Impeller
+
+Impeller introduces several architectural improvements:
+
+## 1) Predictable Performance (Elimination of Runtime Compilation)
+
+The primary achievement of Impeller is the **systemic resolution of Shader Compilation Jank**. Impeller compiles the complete subset of required shaders into binary form during the application build phase. (Note: Compiling all shaders at build time is a core architectural characteristic; the compiler is not executed at runtime.)
+
+- Shaders are compiled into **Metal Shaders** for iOS builds and **SPIR-V** binaries for Android builds.
+- Preparing the complete shader pipeline at build time eliminates shader compilation jank, providing consistent 60Hz/120Hz rendering from the first frame. This removes the need for manual cache collection (`*.sksl`).
+
+## 2) Multithreaded Execution
+
+Unlike Skia's single-threaded constraints, Impeller is designed on top of Vulkan and Metal to leverage modern multicore processors.
+
+- Beyond the standard UI and raster threads, Impeller can distribute the generation of GPU command buffers across multiple threads concurrently during complex rendering operations.
+- This minimizes bottlenecks on the main thread and stabilizes frame rates in complex scenes.
+
+## 3) Optimized Memory and Resource Management
+
+Impeller is engineered to directly manage the hardware characteristics of modern mobile GPUs. It minimizes VRAM allocations, texture uploads, and graphics pipeline state changes, reducing overall hardware overhead.
+
+## 4) Dedicated Framework Architecture
+
+Skia is a general-purpose rendering engine shared across large-scale projects, including Google Chrome and the Android Operating System. In contrast, Impeller is a **lightweight engine built specifically for the Flutter framework.**
+
+- The process of translating declarative layout trees into 2D graphics commands is streamlined.
+- Operating independently of external project dependencies allows the Flutter team to implement optimizations and adapt to graphics hardware trends directly within the engine codebase.
+
+---
+
+# 5. Runtime Routing Between Skia and Impeller
+
+Google developed **Impeller** to leverage the capabilities of Vulkan and Metal. However, because the Android ecosystem contains diverse hardware generations, older legacy devices lack Vulkan support and rely exclusively on OpenGL ES.
+
+To address this, Flutter implements a **fallback strategy** determined at application startup:
+
+```
+[User Launches Flutter App]
+       │
+       ▼
+[Flutter Engine Initialization]
+       │
+       ├─► Is the device iOS/macOS? ──► [ Impeller Engine (Metal Backend) Enforced ]
+       │
+       └─► Is the device Android?
+               │
+               ├─► Is Vulkan API reliably supported? ──► [ Impeller Engine (Vulkan Backend) Enabled ]
+               └─► Legacy device without Vulkan?     ──► [ Skia Engine (OpenGL Backend) Enabled ]
+
+```
+
+This dual-path architecture provides optimized performance via Impeller on modern hardware while maintaining backward compatibility and stability on legacy devices.
+
+---
+
+# 6. The Ongoing Role of Skia
+
+The transition away from Skia on mobile does not imply deficiencies in the engine itself. Rather, Skia's historical architecture was not optimized for the specific requirements of a declarative UI framework demanding jank-free 60Hz/120Hz animations on mobile hardware.
+
+- Modern iterations of Skia support multithreading through its next-generation engine, Graphite (transitioning from the legacy Ganesh renderer). As noted previously, Graphite was in its infancy when Impeller development began, prompting the team to build a dedicated engine tailored to Flutter.
+- For web browsing (including Chrome and Chromium-based browsers), desktop environments, and standard Android OS UI rendering, Skia remains an industry-standard 2D graphics engine.
+- Additionally, recent ecosystems, such as Shopify's integrations, have implemented Skia directly into the native layer of React Native to achieve GPU-accelerated rendering improvements.
+
+---
+
+## Additional References
+
+- [Why Vulkan Is Better (But You Might Want OpenGL Anyway)](https://medium.com/fossible/why-vulkan-is-better-but-you-might-want-opengl-anyway-f797cf9cfaea)
+- [Flutter GitHub - Milestone](https://github.com/flutter/flutter/milestones)
