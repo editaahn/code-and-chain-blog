@@ -3,6 +3,7 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
 import { highlight } from "sugar-high";
 import type { ReactNode } from "react";
+import { YouTube } from "@/components/blog/youtube-embed";
 
 const baseComponents = {
   a: ({ href, rel, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
@@ -150,6 +151,7 @@ export async function MDXContent({ content }: MDXContentProps) {
   const components: MDXComponents = {
     ...baseComponents,
     ...createHeadingComponents(),
+    YouTube,
   };
 
   return (
