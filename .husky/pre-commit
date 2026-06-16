@@ -1,0 +1,5 @@
+changed=$(git diff --cached --name-only --diff-filter=ACM | grep 'content/blog/ko/.*\.mdx$' || true)
+for f in $changed; do
+  [ -f "$f" ] && /opt/homebrew/opt/node@20/bin/node node_modules/.bin/tsx scripts/translate-post.ts "$f"
+done
+git add content/blog/en/ --ignore-removal || true
