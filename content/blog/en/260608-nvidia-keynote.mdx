@@ -1,0 +1,335 @@
+---
+title: "The AI Factory and Agentic AI NVIDIA Is Designing"
+description: "NVIDIA's strategic shift through the GTC 2025 and 2026 Taipei keynotes: from GPU company to AI Factory architect"
+date: "2026-06-08"
+category: "product-development"
+subcategory: "ai"
+tags: ["NVIDIA", "GTC 2026", "GTC 2025"]
+published: true
+---
+
+This article looks at the themes of AI Factory and Agentic AI as a continuous thread across the GTC 2025 and Taipei 2026 keynotes.
+
+- [NVIDIA GTC 2025 Keynote by Jensen Huang](https://www.youtube.com/watch?v=_waPvOwL9Z8)
+- [NVIDIA GTC Taipei 2026: Jensen Huang Full Keynote](https://www.youtube.com/watch?v=q_umfWm8J28)
+
+<YouTube
+  url="https://www.youtube.com/watch?v=q_umfWm8J28"
+  title="NVIDIA GTC 2026 Keynote"
+/>
+
+The core message NVIDIA delivered at the GTC 2025 keynote was not simply the arrival of **faster GPUs**. It was a declaration that artificial intelligence is no longer an experimental technology that only consumes cost, but a **productive infrastructure that generates real revenue**.
+
+If GTC 2025 showed the direction of AI infrastructure, Jensen Huang's GTC Taipei 2026 keynote one year later explained what kind of computing structure would actually run on top of it. AI has now entered the stage of **Agentic AI**, where it plans, uses tools, and performs work on its own.
+
+The shift is much larger than it may seem. The computing structure itself is `moving from app-centric to agent-centric`, and as a result, the data center is being redefined not as a server room filled with GPUs, but as an **AI Factory**. It is an entire industrial facility that mass-produces tokens, including power, cooling, networking, and scheduling software.
+
+Where past competition in computing infrastructure centered on securing higher compute performance (FLOPS), the core KPI in the AI era is shifting toward **producing response tokens quickly and cheaply**.
+
+As global data center capital expenditure moves toward a trillion-dollar-scale market, NVIDIA is no longer just a chipmaker. Beyond GPUs, it is directly designing networking, cooling, optical communication, data center software, and robotics platforms, taking on the role of **architect of the next-generation AI production line**.
+
+---
+
+# 1. The Major Shift in Computing Paradigm
+
+## The Limits of General-Purpose Computing and the Move to Accelerated Computing
+
+For the past several decades, computing has centered on general-purpose CPUs. They execute human-written code sequentially and calculate according to predefined rules. But as large-scale data and AI workloads have exploded, traditional computing has run into limits in both efficiency and power consumption.
+
+AI models require **massively parallel computation**. They need to process thousands or tens of thousands of operations simultaneously, making accelerators such as GPUs far better suited than CPUs. This is why data centers are rapidly moving from CPU-centric architectures to GPU-based **Accelerated Computing**.
+
+## Tokens per Watt
+
+Put simply, this asks: **"How many tokens can AI produce for each unit of electricity paid for?"** The biggest constraint facing AI data centers is **power supply**. Large-scale AI clusters consume power at the level of an entire city. But the maximum amount of power that a power plant or national grid can supply to a specific data center building is legally and physically limited.
+
+- **Past approach**: If more AI compute was needed, add more servers and power
+- **Current constraint**: Grid limits restrict the available watts themselves
+
+In the end, AI infrastructure competition is becoming a question of **how many more tokens can be produced within limited power**. From this perspective, GPU performance competition is not merely benchmark competition, but closer to a productivity race between token production factories.
+
+At GTC 2026, Jensen Huang repeatedly referred to AI data centers as Token Factories. The purpose of a data center is now moving toward how many **useful output tokens** can be produced within limited power and cost. FLOPS itself has not become unimportant. Rather, FLOPS is being repositioned from the goal itself to a means of producing more tokens.
+
+- Ref. [Why 'tokens per watt' is crucial for measuring AI efficiency](https://blog.se.com/datacenter/2025/12/04/why-tokens-per-watt-is-crucial-for-measuring-ai-efficiency/)
+
+## The Rise of Agentic AI That Acts on Its Own
+
+### Three Stages of AI Paradigm Evolution
+
+The role of AI is also changing quickly.
+
+- Retrieval: the stage of finding existing information from a database
+- Generative: the stage of understanding context and creating new words and images
+- Agentic AI: the stage of planning autonomously and using tools to solve problems toward a goal
+
+Because Agentic AI goes through multiple rounds of reasoning or repeatedly uses tools, it requires far more computation.
+
+## The Explosive Increase in Inference Compute
+
+With the emergence of **reasoning models that solve complex problems by breaking them into multiple steps**, the amount of **inference compute** required at the service stage has increased sharply. If earlier AI services were at the level of `question -> answer`, the new flow repeatedly goes through `plan -> explore -> verify -> reason again -> execute`.
+
+At GTC 2025, NVIDIA said that with the emergence of these reasoning-based AI workloads, **the compute demand required for inference is being reassessed upward by as much as 100x compared with previous expectations**. This does not simply mean that models have become larger. It is closer to a signal that **the way AI is used is changing**.
+
+In the early stages of the AI industry, most costs were concentrated on model training. Now, **real-time inference performance** has become more important.
+
+### Key Metrics That Have Become Important
+
+- **TTFT (Time To First Token)**  
+  The time it takes for a user to receive the first response token after making a request
+
+- **Throughput**  
+  How many tokens can be generated per second
+
+- **Tokens per Watt**  
+  The amount of tokens that can be produced with the same amount of power
+
+### From Apps to Agents
+
+At GTC 2026, Jensen Huang described the future computing structure quite directly. In the past, computers followed an `Application + Operating System` structure. Users launched programs and repeatedly clicked and typed.
+
+The future of computing, by contrast, will look like this.
+
+```text
+Model (LLM)
+    ↓
+Harness (orchestration)
+    ↓
+Tools (DB, Python, Browser, CAD, etc.)
+    ↓
+Memory (Short / Long-term)
+```
+
+Users will no longer launch apps and operate them directly. When they express intent, agents call tools on their own, create intermediate plans, and perform the work. This means the interface itself is shifting from a computing environment where people click apps to one where people delegate work. From NVIDIA's perspective, the more agents there are, the more inference demand grows, and this ultimately leads to greater GPU demand.
+
+---
+
+# 2. Innovation in Hardware Architecture
+
+## Blackwell and AI Factory-Centric Design
+
+The core point NVIDIA emphasized at GTC 2025 was **keeping GPUs from sitting idle**. In large-scale AI infrastructure, GPUs are the most expensive resource, yet in real data centers they often sit idle because of bottlenecks such as data loading, communication delays between GPUs, and thermal and cooling limits.
+
+With the Blackwell generation, NVIDIA redesigned the entire system to reduce these bottlenecks. The major shift is that **the design center of gravity moved toward improving the efficiency of the entire AI Factory**.
+
+### Stronger AI-Based Rendering in Consumer GPUs
+
+Changes in the Blackwell architecture are affecting not only data centers, but also consumer GPUs.
+
+A representative example is the GeForce RTX 50 series, where the share of AI rendering based on **DLSS 4 (Multi Frame Generation)** has expanded significantly.
+
+Traditional graphics rendering had the GPU directly calculate every pixel. Recently, however, the graphics pipeline has been changing toward a model where **AI predicts and supplements intermediate frames and details** based on partial frame and pixel information.
+
+This shows that graphics processing itself is shifting beyond FPS improvement toward **using computing resources more efficiently**.
+
+## System Design That Overcomes Power Constraints
+
+In an AI Factory, the most expensive costs are often not GPUs, but **power and cooling**. Because large-scale reasoning model inference pushes GPU utilization to extremes, system efficiency becomes critically important.
+
+With the Blackwell generation, NVIDIA presented **producing more tokens within the same amount of power** as a core goal.
+
+### Limits of the Hopper Generation
+
+The previous Hopper-based infrastructure delivered strong results in large-scale AI training and inference, but as scale increased, it faced problems such as:
+
+- Higher cost of moving data between GPUs
+- Network bottlenecks
+- Limits of air cooling
+- Increased power waste when scaling systems
+
+In particular, as the number of GPUs increased, the cost of **moving data** grew larger than the cost of the actual computation.
+
+### The Blackwell NVL72 Approach
+
+**NVL72**, the flagship system of the Blackwell generation, focuses on reducing these bottlenecks.
+
+- Connecting 72 GPUs as if they were one massive accelerated computer
+- Ultra-high-speed interconnect based on NVLink
+- Large-scale liquid cooling
+- Integration with inference orchestration software
+
+NVIDIA says that when Blackwell-based systems are combined with NVIDIA Dynamo, inference throughput can improve by up to 40x compared with the Hopper generation.
+
+---
+
+# 3. The Evolution of Software and Infrastructure
+
+## NVIDIA Dynamo: The Orchestration Layer of the AI Factory
+
+If AI infrastructure is viewed as one massive factory, or AI Factory, it needs an operating system that can control it efficiently. NVIDIA developed and open-sourced **NVIDIA Dynamo**, a data center-scale OS that intelligently and dynamically distributes and manages the Prefill[^1] and Decode[^2] stages, which are core workloads of AI accelerator infrastructure.
+
+Dynamo OS coordinates large-scale compute workloads so they are evenly distributed across the entire infrastructure, ensuring the token generation speed users experience while raising the throughput of the whole AI Factory to the boundary of the Pareto frontier[^3]. When this Dynamo OS is combined with the Blackwell NVLink 72 system, it produces up to a **40x improvement in inference performance** versus Hopper under the same power conditions.
+
+## Silicon Photonics and the Removal of Network Bottlenecks
+
+### Communication Problems Between GPUs
+
+To train state-of-the-art AI or run agents at large scale, tens of thousands of GPUs need to be connected as if they were one giant computer. Traditionally, the communication lines that connect GPUs and exchange data have mostly used copper wires, or electrical signals, but as data volume has exploded, problems have emerged.
+
+As electrical signals travel farther, resistance generates heat and weakens the signal. If tens of thousands of GPUs are connected with copper wires, hundreds of megawatts of electricity, enough for a small or mid-sized city, can be wasted just sending data and powering communication lines and cooling fans.
+
+### Co-Packaged Optics (CPO)
+
+To solve this, NVIDIA unveiled a network strategy based on **Silicon Photonics**. This technology transmits data using light, or optical signals, instead of electricity.
+
+The center of the photonics strategy announced at GTC 2025 is closer to the **network switch** than the GPU itself.
+
+In the existing structure, data had to pass through the steps of `Switch ASIC -> optical transceiver -> optical cable`. But **Co-Packaged Optics (CPO)** integrates the **optical communication module close to the Switch ASIC[^4]**, aiming to reduce signal conversion cost, power loss, and heat generation while securing higher bandwidth.
+
+This means NVIDIA has begun focusing not only on making GPUs faster, but on **making the connections between GPUs more efficient**.
+
+### MRM (Micro Ring Resonator Modulator)
+
+One of the key technologies in silicon photonics is **MRM**.
+
+Simply put, it is like an **ultra-small optical switch that turns light signals on and off extremely quickly**. A tiny ring structure is built on silicon, and small voltage changes are used to let light of a specific wavelength pass through or block it. This enables ultra-high-speed data transmission at very low power.
+
+NVIDIA emphasized **1.6 Tb/s-class connection speed** in photonics-based networking and presented it as one of the key technologies for scaling future AI Factories.
+
+### Advanced Packaging and the Supply Chain
+
+This photonics strategy can only be completed when not just GPUs, but semiconductor manufacturing, optical components, advanced packaging, and cooling systems are tightly connected. In particular, TSMC's advanced packaging technology is expected to play an important role in NVIDIA's next-generation system design.
+
+The "AI Factory" NVIDIA keeps talking about is ultimately **a competition across the entire supply chain system**.
+
+---
+
+# 4. The Three-Year Roadmap Ahead
+
+At GTC 2025, NVIDIA went beyond simple product announcements and disclosed a very specific **infrastructure supply roadmap for the coming years**.
+
+This means more than marketing. AI infrastructure investment is a business that requires tens to hundreds of billions of dollars in CAPEX. Cloud providers and data center operators care deeply about long-term supply predictability. When infrastructure with what level of performance will arrive is directly tied to customers' investment plans.
+
+This is why NVIDIA is making its annual cadence strategy, releasing a new architecture every year, even clearer.
+
+```text
+[2H 2025]
+Blackwell Ultra (enhanced memory and inference performance)
+        ↓
+[2H 2026]
+Vera Rubin (HBM4, expanded NVLink)
+        ↓
+[2H 2027]
+Rubin Ultra (massive NVLink expansion)
+        ↓
+[Next generation]
+Feynman
+```
+
+## 1) Connecting GPUs at Larger Scale
+
+As AI models grow larger, improving the performance of a single GPU is not enough. The ultimate goal is to make many GPUs operate like one massive computer. In other words, the competition is moving from GPUs to **cluster architecture**.
+
+## 2) Vera CPU
+
+The role of the CPU in the age of AI agents is changing. Traditional CPUs were designed for people. They handled second-level responses for web servers, VMs, and general applications. But Agentic AI is different. Agents call tools, read databases, search memory, and then perform reasoning again. In this process, **the longer GPUs wait, the more the total cost increases**.
+
+The **Vera CPU** unveiled at GTC 2026 was designed to solve exactly this problem. While GPUs perform inference, the Vera CPU handles agent runtime orchestration, data access, and data collection. The role of the CPU is shifting from general-purpose computing to **coordination that maximizes GPU utilization**.
+
+---
+
+# 5. Redefining the Personal Computer
+
+## From Computers That Run Apps to Computers That Run Agents
+
+At GTC Taipei 2026, NVIDIA repeatedly emphasized that **the computing interface itself is changing**.
+
+For the past several decades, PCs have been structured around users launching applications. People opened browsers, wrote documents, and edited code in IDEs. The operating system managed multiple apps, and users worked directly through a GUI.
+
+But in the age of Agentic AI, users no longer need to think about which app to open. When they describe a goal, the agent plans on its own, calls multiple tools, and performs the work. In other words, the computer is beginning to move from an **app execution environment** to an **agent execution environment**.
+
+## RTX Spark and the Personal AI Computer
+
+In line with this shift, NVIDIA introduced a new computing direction called **RTX Spark**, which has a structure capable of continuously performing agent inference locally.
+
+By unveiling a system based on the **N1X SoC** developed in collaboration with MediaTek, NVIDIA presented a direction where AI workloads, including local LLM inference, code generation and execution, and personal memory-based AI assistants, are processed locally. In particular, it emphasized an environment where personal agents can run continuously without cloud calls by using the large VRAM and CUDA ecosystem of RTX GPUs.
+
+This strategy structurally resembles its data center strategy. If the AI Factory is a large-scale token production factory, RTX Spark can be seen as a **personal AI workshop** that shrinks that idea down to the individual level.
+
+## Why NVIDIA Is Talking About PCs Again
+
+The center of NVIDIA's strategy is still the AI Factory. Most of the actual revenue and CAPEX still comes from data center infrastructure, and Vera Rubin, networking, optical communication, and inference optimization were at the center of the announcements.
+
+Even so, there is a reason NVIDIA brought the PC back to the front in 2026. Agentic AI requires far more interaction than expected. If every request is processed in the cloud, latency and inference costs increase. **Eventually, some inference is likely to be handled locally**. Local execution is especially advantageous for AI that must maintain context continuously, such as personal assistants, coding agents, and creative tools.
+
+NVIDIA appears to see this as the starting point of a new PC replacement cycle. In this direction, personal computing will compete on the **ability to run competitive AI agents locally**.
+
+---
+
+# 6. Physical AI and Humanoid Robots
+
+## A Physical AI Ecosystem That Understands Inertia and Friction
+
+Until now, most AI has learned from **digital data** such as text, images, and video. But the real world is much more complex. Robots need to understand physical laws such as inertia, friction, and gravity.
+
+NVIDIA is now emphasizing **Physical AI**, the next stage of AI that understands and acts in the real world.
+
+## NVIDIA as a Robotics Platform
+
+What is interesting is that NVIDIA is not trying to become a robot manufacturer itself. Its strategy is to **control the common platform of the robotics industry**, much like iOS or Android in smartphones.
+
+What NVIDIA wants to provide includes simulation environments, training data generation, physics engines, and inference infrastructure. If manufacturers build the robot body, **NVIDIA builds the brain**.
+
+## Providing Virtual Infrastructure for Data Collection
+
+The hardest problem in robot learning is data. Collecting real-world data is slow, expensive, and risky. NVIDIA provides a way to train robots hundreds of millions of times in a virtual world before they go through trial and error in the real world.
+
+- **Omniverse**: A digital twin simulation platform with a **physics environment similar to the real world**
+- **Cosmos**: Generates **high-quality virtual data needed for robot training** at scale
+
+This can be used across autonomous driving, logistics, manufacturing, and humanoid robots.
+
+## Cosmos 3
+
+At GTC Taipei 2026, NVIDIA put **Cosmos 3** front and center as a model that **predicts changes in physical environments and generates action plans**.
+
+Cosmos 3 uses a **Mixture-of-Transformers** architecture. It combines a reasoning transformer that understands and reasons about the environment with a generation transformer that generates actions and world states. Another defining feature is its **omnimodel** structure, which handles multiple types of data together, including text, video, and actions.
+
+## Groot N1
+
+At GTC 2025, NVIDIA open-sourced **Groot N1**. It is a general-purpose **Foundation Model**[^5] for humanoid robots, trained in virtual environments. If Cosmos 3 is the foundation model for understanding and simulating physical environments, Groot N1 is closer to the **action execution layer for humanoid robots**.
+
+Robot manufacturers can fine-tune on top of this foundation for domains such as logistics or home use. This resembles the flow that formed in the language model market with Base Models plus fine-tuning.
+
+## GPU-Based Physics Simulation
+
+NVIDIA also unveiled the **Newton physics engine**, developed in collaboration with Google DeepMind, Disney Research, and others. It is a model that enables robots to learn in simulated environments closer to real-world physics.
+
+Physics models at the level of existing game engines were not enough to handle problems such as tactile feedback, collision response, and balance control. The Newton physics engine enables robots to learn **precise tactile feedback and fine motor control**.
+
+---
+
+# Conclusion
+
+What NVIDIA showed at GTC 2025 was **the beginning of an industrial structure called the AI Factory**. It defined itself as a company that designs **the entire production line of the factory where money is made**, from the whole data center, power and cooling architecture, network storage, infrastructure software OS, and even the robotics ecosystem.
+
+And at GTC Taipei 2026, it became clear that the application layer to be built on top of that infrastructure is **Agentic AI**. AI is now evolving into a structure that plans directly, calls tools, and calls other AI systems again. This change immediately leads to greater inference compute demand and is changing the structure of the data center itself.
+
+That is why NVIDIA is not staying merely a GPU company. It directly designs GPUs, CPUs, networking, storage, cooling, data center operations software, robotics simulation, and enterprise agent runtimes. This is because **the entire way AI makes money is changing**.
+
+---
+
+## Additional References
+
+- [모든 AI 병목에 NVIDIA가 있다 | 젠슨황 키노트 발표 분석](https://www.youtube.com/watch?v=zOUUFrMGwEg)
+- [NVIDIA Launches Cosmos 3, the Open Frontier Foundation Model for Physical AI](https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Launches-Cosmos-3-the-Open-Frontier-Foundation-Model-for-Physical-AI/default.aspx)
+
+---
+
+[^1]:
+    **Prefill**  
+    The initial stage where an LLM reads the entire input prompt and computes its internal state
+
+[^2]:
+    **Decode**  
+    The stage where the model generates actual response tokens one by one
+
+[^3]:
+    **Pareto frontier**
+    The optimal technical boundary where a specific metric can no longer be improved without sacrificing another metric. Here, it refers to the ideal balance between speed and throughput
+
+[^4]:
+    **ASIC (Application-Specific Integrated Circuit)**
+    A dedicated semiconductor chip inside a network switch that forwards packets at ultra-high speed
+
+[^5]:
+    **Foundation Model**  
+    A general-purpose model that can be used for various downstream tasks through large-scale pretraining
