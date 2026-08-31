@@ -10,7 +10,7 @@ published: true
 
 지난 주의 중심 흐름은 **보안 위험이 개별 애플리케이션에서 공통 인프라 계층으로 내려가고 있다는 점**이다. Cosmos EVM과 Ledger Secure SDK 사례는 여러 체인이나 앱이 공유하는 모듈 하나가 넓은 공격 표면을 만들 수 있음을 보여준다.
 
-동시에 Monad와 TRON에서는 주소, 인증 수단, 실행 환경을 더 유연하게 분리하려는 움직임이 이어진다. Wallet 제품은 체인별 기능 차이만이 아니라 **인증 방식과 보안 상태를 독립된 capability로 모델링**할 필요가 커지고 있다.
+동시에 Monad와 TRON에서는 주소, 인증 수단, 실행 환경을 더 유연하게 분리하려는 움직임이 이어진다. Wallet, DeFi, dApp, custody, chain infrastructure 제품은 체인별 기능 차이만이 아니라 **인증 방식과 보안 상태를 독립된 capability로 모델링**할 필요가 커지고 있다.
 
 ## 1. Cosmos EVM 취약점이 실제 악용되며 6개 체인에 영향
 
@@ -24,12 +24,17 @@ Cosmos Labs의 [사후 분석](https://github.com/cosmos/security/blob/main/comm
 
 ### Product / Engineering 관점
 
-Wallet의 chain-support pipeline은 runtime과 module version을 호환성 정보만이 아니라 보안 정보로 취급해야 한다. registry를 기반으로 체인을 자동 노출한다면 취약한 `cosmos/evm` 버전, chain halt, 긴급 업그레이드, 일시적 disable 상태를 함께 전달할 수 있어야 한다.
+**Wallet:** Chain-support pipeline은 runtime과 module version을 호환성 정보만이 아니라 보안 정보로 취급해야 한다. Registry를 기반으로 체인을 자동 노출한다면 취약한 `cosmos/evm` 버전, chain halt, 긴급 업그레이드, 일시적 disable 상태를 함께 전달할 수 있어야 한다.
+
+**DeFi / Protocol:** 앱 자체의 audit만으로 upstream execution-layer 위험을 다루기 어렵다. 배포 대상 체인의 module version과 security advisory를 release gate에 포함하고, 비정상 잔액이나 supply 변화를 감지하는 invariant monitoring을 별도로 운영할 필요가 있다.
+
+**Chain / Infrastructure:** 공통 모듈을 사용하는 운영자는 software bill of materials와 영향 체인 목록을 신속히 산출할 수 있어야 한다. 취약점 공지, validator upgrade, halt 여부를 downstream 서비스가 기계적으로 읽을 수 있는 상태 정보로 제공하는 것도 중요하다.
 
 ### Follow-up
 
-- 지원 중인 Cosmos EVM 체인의 deployed `cosmos/evm` 버전을 점검한다.
-- 일반 chain metadata와 분리된 emergency warning·disable 경로를 설계한다.
+- [Wallet] 지원 중인 Cosmos EVM 체인의 deployed `cosmos/evm` 버전을 점검하고 emergency warning·disable 경로를 확인한다.
+- [DeFi / Protocol] 배포 체인의 module version을 release gate에 연결하고 잔액·supply invariant alert를 점검한다.
+- [Chain / Infrastructure] 영향 범위와 upgrade·halt 상태를 제공하는 machine-readable security feed를 검토한다.
 
 ---
 
@@ -45,12 +50,17 @@ Hardware wallet의 device screen을 절대적 trust boundary로 간주할 수 �
 
 ### Product / Engineering 관점
 
-Wallet client는 엄격한 APDU sequencing과 명시적인 signing state machine을 가져야 한다. Ledger firmware version뿐 아니라 최소 지원 Ledger App version도 관리해야 한다. Swap, plugin, simulation, clear signing과 blind signing이 섞이는 흐름일수록 검증 범위가 넓어진다.
+**Wallet / Custody:** Client는 엄격한 APDU sequencing과 명시적인 signing state machine을 가져야 한다. Ledger firmware version뿐 아니라 최소 지원 Ledger App version도 관리해야 한다. Swap, plugin, simulation, clear signing과 blind signing이 섞이는 흐름일수록 검증 범위가 넓어진다.
+
+**DeFi / dApp:** Transaction simulation이나 human-readable preview를 제공하더라도 마지막 device confirmation까지 동일한 calldata와 authorization scope가 유지되는지 확인해야 한다. dApp이 표시한 의도와 hardware app이 해석한 payload 사이의 불일치도 관측 가능한 오류로 다뤄야 한다.
+
+**Exchange / Signing Infrastructure:** Hardware signer를 withdrawal, treasury, validator 운영에 사용하는 조직은 firmware inventory만으로 patch 상태를 판단해서는 안 된다. Device별 app version과 배포된 SDK lineage를 asset inventory에 포함할 필요가 있다.
 
 ### Follow-up
 
-- Ledger 연동에서 firmware와 app version을 각각 검증하는지 확인한다.
-- 사용자 검토 이후 signing payload가 바뀌지 않는지 integration test로 확인한다.
+- [Wallet / Custody] Ledger 연동에서 firmware와 app version을 각각 검증하고 최소 app version 정책을 적용한다.
+- [DeFi / dApp] 시뮬레이션·preview 이후 device에 전달되는 signing payload가 바뀌지 않는지 end-to-end test로 확인한다.
+- [Exchange / Signing Infrastructure] 운영 중인 device의 app version과 SDK lineage를 inventory에서 추적한다.
 
 ---
 
@@ -64,12 +74,17 @@ Monad는 **Flexible and Upgradeable Account Authentication** 초안을 공개했
 
 ### Product / Engineering 관점
 
-Wallet은 장기적으로 account를 `address ↔ private key` 관계가 아니라 `address + authentication configuration`으로 다뤄야 할 수 있다. Recovery UX, key export, passkey, hardware signer, transaction authorization API를 더 독립적인 모듈로 유지하는 편이 유리하다.
+**Wallet / Custody:** Account를 `address ↔ private key` 관계가 아니라 `address + authentication configuration`으로 다뤄야 할 수 있다. Recovery UX, key export, passkey, hardware signer, transaction authorization API를 독립적인 모듈로 유지하는 편이 유리하다.
+
+**DeFi / dApp:** 인증 수단이 바뀌어도 주소와 포지션은 유지될 수 있지만, authenticator 변경 중의 권한과 finality는 별도 위험이 된다. 고액 action, allowance 변경, governance vote에서 최근 인증 변경 여부를 정책 신호로 사용할 가능성이 생긴다.
+
+**Identity / Infrastructure:** Indexer와 account API는 단일 public key보다 authenticator set, recovery authority, 변경 대기 상태를 표현해야 한다. 기존 EOA 가정을 사용하는 analytics·compliance tooling도 같은 주소의 인증 이력을 해석할 수 있어야 한다.
 
 ### Follow-up
 
-- recovery authority와 authentication 변경 delay를 확인한다.
-- downgrade protection과 기존 EOA-compatible tooling의 해석 방식을 검토한다.
+- [Wallet / Custody] Recovery authority, authentication 변경 delay, downgrade protection을 확인한다.
+- [DeFi / dApp] 인증 변경 직후의 고위험 action을 제한하거나 추가 확인하는 정책이 필요한지 검토한다.
+- [Identity / Infrastructure] Authenticator 이력과 pending change를 기존 EOA-compatible tooling이 어떻게 해석할지 검토한다.
 
 ---
 
@@ -83,12 +98,17 @@ Socket의 [조사](https://www.socket.dev/blog/firefox-crypto-wallet-theft)는 �
 
 ### Product / Engineering 관점
 
-Publisher authenticity 자체가 product surface가 된다. 공식 website에서 검증된 설치 링크를 제공하고, 공식 extension ID를 공개하며, 앱 안에서 설치 출처를 안내해야 한다. conflicting 또는 fake provider 탐지 역시 검토 대상이다.
+**Wallet:** Publisher authenticity 자체가 product surface가 된다. 공식 website에서 검증된 설치 링크를 제공하고, 공식 extension ID를 공개하며, 앱 안에서 설치 출처를 안내해야 한다. Conflicting 또는 fake provider 탐지 역시 검토 대상이다.
+
+**DeFi / dApp:** 연결된 provider가 유명 wallet의 이름과 API를 흉내 낼 수 있으므로 provider injection만으로 신뢰를 확정해서는 안 된다. 고위험 transaction에서는 origin, chain, spender, simulation 결과를 다시 확인하고 wallet 선택 화면에서 공식 설치 경로를 제공할 필요가 있다.
+
+**Platform / Security:** Extension marketplace와 browser 보안팀은 publisher identity, code similarity, remote-content dependency, 권한 변화, version history를 결합해 campaign 단위로 탐지해야 한다. 개별 listing 삭제만으로는 같은 인프라를 쓰는 변종을 막기 어렵다.
 
 ### Follow-up
 
-- 설치 funnel과 support 문서에 canonical extension ID가 명시돼 있는지 점검한다.
-- extension이 초기화 과정에서 keyring·clipboard·seed phrase에 접근하는 경로를 위협 모델에 반영한다.
+- [Wallet] 설치 funnel과 support 문서에 canonical extension ID가 명시돼 있는지 점검한다.
+- [DeFi / dApp] Provider provenance와 고위험 transaction 재확인 절차를 connection threat model에 반영한다.
+- [Platform / Security] 유사 코드·권한·원격 인프라를 묶어 탐지하고 연관 extension을 함께 차단하는 절차를 검토한다.
 
 ---
 
@@ -104,19 +124,24 @@ Ethereum이 아닌 체인도 완전히 독자적인 execution semantics를 유�
 
 ### Product / Engineering 관점
 
-`if (chain === "tron")` 같은 체인별 분기보다 `supportsPasskey`, `supportsEvmSigning`, `supportsSmartAccount`, `supportsCrossChainMessaging`처럼 capability를 표현하는 구조가 확장에 유리하다. TRON 지원은 EVM transaction·authentication abstraction을 재사용하고 얇은 chain-specific adapter를 두는 방식으로 설계할 여지가 커진다.
+**Wallet / Custody:** `if (chain === "tron")` 같은 체인별 분기보다 `supportsPasskey`, `supportsEvmSigning`, `supportsSmartAccount`처럼 capability를 표현하는 구조가 확장에 유리하다. EVM transaction·authentication abstraction을 재사용하고 얇은 chain-specific adapter를 둘 여지가 커진다.
+
+**DeFi / dApp:** P-256 verification 비용과 호출 방식이 안정되면 passkey 기반 onboarding이나 session authorization을 TRON에서도 설계할 수 있다. 다만 precompile 지원 자체와 account recovery, replay protection, relayer UX까지 갖춘 product-ready account flow는 구분해야 한다.
+
+**Infrastructure / Cross-chain:** `supportsCrossChainMessaging` 같은 capability는 interface 존재 여부뿐 아니라 mainnet activation, gateway implementation, message finality, replay·domain separation까지 표현해야 한다. 표준화 제안과 실제 production support를 같은 상태로 취급해서는 안 된다.
 
 ### Follow-up
 
-- TRON integration에서 재사용 가능한 EVM signing·authentication 경계를 정의한다.
-- passkey verification과 cross-chain messaging primitive의 실제 mainnet activation 상태를 추적한다.
+- [Wallet / Custody] TRON integration에서 재사용 가능한 EVM signing·authentication 경계를 정의한다.
+- [DeFi / dApp] P-256 precompile을 이용한 passkey flow의 비용, recovery, replay protection을 prototype으로 검증한다.
+- [Infrastructure / Cross-chain] Passkey verification과 cross-chain messaging primitive의 mainnet activation 및 구현 성숙도를 분리해 추적한다.
 
 ---
 
 ## 이번 주 우선순위
 
-가장 즉각적인 과제는 Cosmos EVM 취약점 점검이다. Cosmos SDK·EVM network를 자동으로 노출하거나 chain registry로 지원 체인을 관리하는 Wallet에서는 직접적인 architecture 이슈가 된다. 두 번째는 Ledger SDK 대응이다. Hardware wallet display를 신뢰 경계의 전부로 보던 가정을 다시 검토해야 한다.
+가장 즉각적인 과제는 Cosmos EVM 취약점 점검이다. Wallet뿐 아니라 해당 체인에 배포된 DeFi protocol, indexer, bridge, validator infrastructure 모두 upstream module version과 비상 대응 상태를 확인해야 한다. 두 번째는 Ledger SDK 대응이다. Wallet·custody·exchange와 이를 연결하는 dApp은 hardware wallet display를 신뢰 경계의 전부로 보던 가정을 다시 검토해야 한다.
 
-더 큰 흐름은 Wallet identity와 key가 분리되고, Wallet UX가 passkey와 programmable authentication으로 이동하는 방향이다. 따라서 multichain wallet은 **chain representation → transaction execution → authentication/signing → security health state**를 하나의 chain type에 강하게 결합하지 않는 구조를 지향할 필요가 있다.
+더 큰 흐름은 account identity와 key가 분리되고, 사용자 인증이 passkey와 programmable authentication으로 이동하는 방향이다. 제품군마다 노출 지점은 다르지만 **chain representation → transaction execution → authentication/signing → security health state**를 분리해 다루는 구조는 Wallet, DeFi, custody, infrastructure 전반에 공통된 설계 과제가 된다.
 
 > 브리핑은 매주 월요일 Codex로 생성된 분석 자료를 기반으로 작성된다. 게재 전 블로그 운영자의 직접 검수 및 승인을 거친다.
