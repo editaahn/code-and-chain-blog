@@ -10,17 +10,21 @@ published: true
 
 Last week's central pattern is that **security risk is moving from individual applications into shared infrastructure layers**. The Cosmos EVM and Ledger Secure SDK incidents show how a single module reused by many chains or applications can create a broad attack surface.
 
-At the same time, Monad and TRON are making account authentication and execution environments more modular. Wallet, DeFi, dApp, custody, and chain-infrastructure products increasingly need to model **authentication methods and security health as capabilities independent of the chain itself**.
+At the same time, Monad and TRON are making account authentication and execution environments more modular. Wallet, DeFi, dApp, custody, and chain-infrastructure products increasingly need to **manage authentication methods and security posture as separate concerns**.
 
 ## 1. A Cosmos EVM vulnerability was exploited across six chains
 
-According to the Cosmos Labs [post-mortem](https://github.com/cosmos/security/blob/main/communications/cosmos_evm_GHSA-7g4w-cg88-2cq2_post_mortem.md), attackers exploited `GHSA-7g4w-cg88-2cq2` from August 20 through 25 to steal funds from several Cosmos-based chains. The flaw was a missing balance-underflow guard in the shared Cosmos EVM `StateDB`. Under specific vesting and delegation flows, the EVM-side spendable balance could wrap around and let an attacker move balance that did not exist.
+According to the Cosmos Labs [post-mortem](https://github.com/cosmos/security/blob/main/communications/cosmos_evm_GHSA-7g4w-cg88-2cq2_post_mortem.md), attackers exploited `GHSA-7g4w-cg88-2cq2` from August 20 through 25 to steal funds from several Cosmos-based chains. The flaw was a **missing balance-underflow guard** in the shared Cosmos EVM `StateDB`.
+
+> Missing balance-underflow guard: a vulnerability where a balance subtraction is not checked for a negative result, allowing the negative value to be converted into a very large positive number.
+
+Under specific vesting and delegation flows, the EVM-side spendable balance became abnormally large and allowed an attacker to move funds that did not exist.
 
 The affected releases are `<0.6.2` and `0.7.0–0.7.1`; fixes are included in `0.6.2` and `0.7.2+`. The Cosmos security team coordinated with roughly 40 chains, and six networks were known to have been exploited.
 
 ### Why it matters
 
-The incident demonstrates the **shared-module blast radius** of modular chains. A chain can have sound application code and still inherit a critical accounting defect from an upstream execution layer.
+The incident demonstrates how **one shared module in a modular chain can affect multiple networks at once**—a shared-module blast radius. A chain can have sound application code and still inherit a critical accounting defect from an upstream execution layer.
 
 ### Product / engineering implications
 
@@ -38,15 +42,15 @@ The incident demonstrates the **shared-module blast radius** of modular chains. 
 
 ---
 
-## 2. A shared Ledger SDK flaw weakened the “what you see is what you sign” guarantee
+## 2. Shared Ledger SDK vulnerability: a mismatch between what is displayed and what is signed
 
-Ledger's [LSB-023](https://donjon.ledger.com/lsb/023/) describes a flaw that allowed a malicious host to interleave another APDU command while a user was reviewing the first operation. In vulnerable applications, signing parameters could change after display, allowing a user to review Transaction A but sign parameters from Transaction B. Ledger reported no evidence of exploitation at disclosure.
+Ledger's [LSB-023](https://donjon.ledger.com/lsb/023/) describes a flaw that allowed a malicious host to interleave another APDU command—a low-level instruction sent from wallet software to a Ledger device—while a user was reviewing the first operation. In vulnerable applications, signing parameters could change after display, allowing a user to review Transaction A but sign parameters from Transaction B. Ledger reported no evidence of exploitation at disclosure.
 
 The important point is that the issue was in the **shared Ledger Secure SDK**, rather than device firmware. The correction landed in `v26.6.1`, and affected applications must be rebuilt and republished against that SDK. A firmware update alone does not deliver the fix.
 
 ### Why it matters
 
-This is a reminder that a hardware-wallet screen cannot be treated as an absolute trust boundary. Command sequencing and state transitions between the host and application are equally important.
+This is a reminder that a hardware-wallet screen cannot be treated as an absolutely trustworthy boundary. Command sequencing and state transitions between the host and application are equally important.
 
 ### Product / engineering implications
 

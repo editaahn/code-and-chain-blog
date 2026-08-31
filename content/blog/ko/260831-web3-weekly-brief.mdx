@@ -10,17 +10,21 @@ published: true
 
 지난 주의 중심 흐름은 **보안 위험이 개별 애플리케이션에서 공통 인프라 계층으로 내려가고 있다는 점**이다. Cosmos EVM과 Ledger Secure SDK 사례는 여러 체인이나 앱이 공유하는 모듈 하나가 넓은 공격 표면을 만들 수 있음을 보여준다.
 
-동시에 Monad와 TRON에서는 주소, 인증 수단, 실행 환경을 더 유연하게 분리하려는 움직임이 이어진다. Wallet, DeFi, dApp, custody, chain infrastructure 제품은 체인별 기능 차이만이 아니라 **인증 방식과 보안 상태를 독립된 capability로 모델링**할 필요가 커지고 있다.
+동시에 Monad와 TRON에서는 주소, 인증 수단, 실행 환경을 더 유연하게 분리하려는 움직임이 이어진다. Wallet, DeFi, dApp, custody, chain infrastructure 제품은 체인별 기능 차이만이 아니라 **인증 방식과 보안 수준을 각각 따로 관리해야 할 필요성**이 커지고 있다.
 
 ## 1. Cosmos EVM 취약점이 실제 악용되며 6개 체인에 영향
 
-Cosmos Labs의 [사후 분석](https://github.com/cosmos/security/blob/main/communications/cosmos_evm_GHSA-7g4w-cg88-2cq2_post_mortem.md)에 따르면 공격자는 8월 20일부터 25일까지 `GHSA-7g4w-cg88-2cq2`를 악용해 여러 Cosmos 기반 체인에서 자금을 탈취했다. 취약점은 Cosmos EVM의 공통 `StateDB`에 있던 balance underflow 검증 누락이었다. 특정 vesting·delegation 흐름에서 EVM이 계산하는 사용 가능 잔액이 wrap-around되어 실제로 존재하지 않는 잔액을 이동시킬 수 있었다.
+Cosmos Labs의 [사후 분석](https://github.com/cosmos/security/blob/main/communications/cosmos_evm_GHSA-7g4w-cg88-2cq2_post_mortem.md)에 따르면 공격자는 8월 20일부터 25일까지 `GHSA-7g4w-cg88-2cq2`를 악용해 여러 Cosmos 기반 체인에서 자금을 탈취했다. 취약점은 Cosmos EVM의 공통 `StateDB`에 있던 **balance underflow 검증 누락**이었다.
+
+> Balance underflow 검증 누락: 잔액 차감 결과가 음수가 되는 상황을 검증하지 않아, 음수 값이 매우 큰 양수로 변환되는 취약점
+
+특정 vesting·delegation 흐름에서 EVM이 계산하는 사용 가능 잔액이 비정상적으로 커지면서 실제로 존재하지 않는 잔액을 옮길 수 있었다.
 
 영향 범위는 `<0.6.2`와 `0.7.0–0.7.1`이며, 수정은 `0.6.2`와 `0.7.2+`에 포함됐다. Cosmos 보안팀은 약 40개 체인과 대응을 조율했고, 실제로 6개 네트워크가 공격받았다고 밝혔다.
 
 ### 왜 중요한가
 
-이번 사고는 modular chain에서 공통 모듈 하나가 여러 네트워크에 동시에 영향을 주는 **shared-module blast radius**를 보여준다. 개별 체인의 앱 코드가 안전하더라도 upstream 실행 계층의 회계 오류를 그대로 상속할 수 있다.
+이번 사고는 **modular chain에서 공통 모듈 하나가 여러 네트워크에 동시에 영향**을 주는 shared-module blast radius를 보여준다. 개별 체인의 앱 코드가 안전하더라도 upstream 실행 계층의 회계 오류를 그대로 상속할 수 있다.
 
 ### Product / Engineering 관점
 
@@ -38,15 +42,15 @@ Cosmos Labs의 [사후 분석](https://github.com/cosmos/security/blob/main/comm
 
 ---
 
-## 2. Ledger 공통 SDK 취약점이 “표시한 내용과 서명한 내용”의 일치를 흔들다
+## 2. Ledger 공통 SDK 취약점: "표시한 내용과 서명한 내용"의 불일치
 
-Ledger의 [LSB-023](https://donjon.ledger.com/lsb/023/)은 사용자가 첫 번째 작업을 검토하는 동안 악성 host가 다른 APDU command를 끼워 넣을 수 있던 문제를 설명한다. 취약한 앱에서는 화면에 표시한 뒤에도 signing parameter가 바뀔 수 있어, 사용자가 Transaction A를 확인했지만 Transaction B의 parameter에 서명하는 상황이 가능했다. Ledger는 공개 시점까지 실제 악용 증거는 없다고 밝혔다.
+Ledger의 [LSB-023](https://donjon.ledger.com/lsb/023/)은 사용자가 첫 번째 작업을 검토하는 동안 악성 host가 다른 APDU command(Wallet 소프트웨어 Ledger에게 보내는 low-level 명령)를 끼워 넣을 수 있던 문제를 설명한다. 취약한 앱에서는 화면에 표시한 뒤에도 signing parameter가 바뀔 수 있어, 사용자가 Transaction A를 확인했지만 Transaction B의 parameter에 서명하는 상황이 가능했다. Ledger는 공개 시점까지 실제 악용 증거는 없다고 밝혔다.
 
 핵심은 firmware보다 **shared Ledger Secure SDK**에 있었다는 점이다. 수정은 `v26.6.1`에 포함됐고, 영향을 받는 앱은 이 SDK로 다시 빌드되어 배포돼야 한다. firmware만 업데이트해서는 수정이 전달되지 않는다.
 
 ### 왜 중요한가
 
-Hardware wallet의 device screen을 절대적 trust boundary로 간주할 수 없다는 사례다. host와 app 사이의 command sequencing, 그리고 검토 중 상태 전이가 같은 수준으로 중요해진다.
+Hardware wallet의 device screen을 절대적으로 신뢰 가능한 boundary로 간주할 수 없다는 사례다. host와 app 사이의 command sequencing, 그리고 검토 중 상태 전이가 같은 수준으로 중요해진다.
 
 ### Product / Engineering 관점
 
