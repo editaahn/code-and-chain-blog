@@ -1,6 +1,6 @@
 ---
 title: "Web3 Weekly Brief 2026/08/31"
-description: "Cosmos EVM과 Ledger SDK 취약점, 업그레이드 가능한 계정 인증, 지갑 확장 프로그램 사칭, TRON의 passkey primitive를 정리한 주간 브리핑"
+description: "Cosmos EVM과 Ledger SDK 취약점, 계정 인증 방식의 변화, 지갑 확장 프로그램 사칭, TRON의 passkey 기반 기능을 정리한 주간 브리핑"
 date: "2026-08-31"
 category: "crypto"
 subcategory: "web3-brief"
@@ -8,144 +8,144 @@ tags: ["Web3", "Wallet Security", "Cosmos EVM", "Ledger", "Account Abstraction",
 published: true
 ---
 
-지난 주의 중심 흐름은 **보안 위험이 개별 애플리케이션에서 공통 인프라 계층으로 내려가고 있다는 점**이다. Cosmos EVM과 Ledger Secure SDK 사례는 여러 체인이나 앱이 공유하는 모듈 하나가 넓은 공격 표면을 만들 수 있음을 보여준다.
+지난주 가장 두드러진 흐름은 **보안 위험의 무게중심이 개별 애플리케이션에서 공통 인프라로 옮겨가고 있다는 점**이다. Cosmos EVM과 Ledger Secure SDK 사례는 공통 모듈 하나가 여러 체인과 앱의 공격 표면을 한꺼번에 넓힐 수 있음을 보여준다.
 
-동시에 Monad와 TRON에서는 주소, 인증 수단, 실행 환경을 더 유연하게 분리하려는 움직임이 이어진다. Wallet, DeFi, dApp, custody, chain infrastructure 제품은 체인별 기능 차이만이 아니라 **인증 방식과 보안 수준을 각각 따로 관리해야 할 필요성**이 커지고 있다.
+한편 Monad와 TRON에서는 주소와 인증 수단, 실행 환경을 서로 분리하려는 움직임이 이어졌다. 지갑, DeFi, dApp, 수탁, 체인 인프라를 만드는 팀은 이제 체인별 기능 차이뿐 아니라 **인증 방식과 보안 상태도 독립적으로 관리해야 하는 상황**을 맞고 있다.
 
 ## 1. Cosmos EVM 취약점이 실제 악용되며 6개 체인에 영향
 
 Cosmos Labs의 [사후 분석](https://github.com/cosmos/security/blob/main/communications/cosmos_evm_GHSA-7g4w-cg88-2cq2_post_mortem.md)에 따르면 공격자는 8월 20일부터 25일까지 `GHSA-7g4w-cg88-2cq2`를 악용해 여러 Cosmos 기반 체인에서 자금을 탈취했다. 취약점은 Cosmos EVM의 공통 `StateDB`에 있던 **balance underflow 검증 누락**이었다.
 
-> Balance underflow 검증 누락: 잔액 차감 결과가 음수가 되는 상황을 검증하지 않아, 음수 값이 매우 큰 양수로 변환되는 취약점
+> Balance underflow 검증 누락: 잔액을 차감한 결과가 음수인지 확인하지 않아, 음수가 매우 큰 양수로 바뀔 수 있는 취약점이다.
 
-특정 vesting·delegation 흐름에서 EVM이 계산하는 사용 가능 잔액이 비정상적으로 커지면서 실제로 존재하지 않는 잔액을 옮길 수 있었다.
+특정 vesting·delegation 과정에서 EVM이 사용 가능 잔액을 비정상적으로 크게 계산했고, 공격자는 실제로 존재하지 않는 자금까지 옮길 수 있었다.
 
 영향 범위는 `<0.6.2`와 `0.7.0–0.7.1`이며, 수정은 `0.6.2`와 `0.7.2+`에 포함됐다. Cosmos 보안팀은 약 40개 체인과 대응을 조율했고, 실제로 6개 네트워크가 공격받았다고 밝혔다.
 
 ### 왜 중요한가
 
-이번 사고는 **modular chain에서 공통 모듈 하나가 여러 네트워크에 동시에 영향**을 주는 shared-module blast radius를 보여준다. 개별 체인의 앱 코드가 안전하더라도 upstream 실행 계층의 회계 오류를 그대로 상속할 수 있다.
+이번 사고는 modular chain의 공통 모듈 하나가 여러 네트워크에 동시에 피해를 확산시키는 이른바 **shared-module blast radius**를 보여준다. 개별 체인의 앱 코드에 문제가 없더라도 상위 실행 계층의 회계 오류를 그대로 물려받을 수 있다.
 
 ### Product / Engineering 관점
 
-**Wallet:** Chain-support pipeline은 runtime과 module version을 호환성 정보만이 아니라 보안 정보로 취급해야 한다. Registry를 기반으로 체인을 자동 노출한다면 취약한 `cosmos/evm` 버전, chain halt, 긴급 업그레이드, 일시적 disable 상태를 함께 전달할 수 있어야 한다.
+**Wallet:** 체인 지원 절차에서는 runtime과 module version을 단순한 호환성 정보가 아니라 보안 정보로 다뤄야 한다. Registry를 바탕으로 지원 체인을 자동으로 추가한다면 취약한 `cosmos/evm` 버전, 네트워크 중단, 긴급 업그레이드, 일시적 비활성화 상태까지 함께 알려야 한다.
 
-**DeFi / Protocol:** 앱 자체의 audit만으로 upstream execution-layer 위험을 다루기 어렵다. 배포 대상 체인의 module version과 security advisory를 release gate에 포함하고, 비정상 잔액이나 supply 변화를 감지하는 invariant monitoring을 별도로 운영할 필요가 있다.
+**DeFi / Protocol:** 앱 코드 감사를 마쳤더라도 상위 실행 계층의 위험까지 막을 수는 없다. 배포 전 점검 항목에 대상 체인의 module version과 보안 권고를 포함하고, 잔액이나 공급량의 비정상 변화를 찾는 invariant monitoring을 별도로 운영할 필요가 있다.
 
-**Chain / Infrastructure:** 공통 모듈을 사용하는 운영자는 software bill of materials와 영향 체인 목록을 신속히 산출할 수 있어야 한다. 취약점 공지, validator upgrade, halt 여부를 downstream 서비스가 기계적으로 읽을 수 있는 상태 정보로 제공하는 것도 중요하다.
+**Chain / Infrastructure:** 공통 모듈을 쓰는 운영자는 소프트웨어 자재 명세서(SBOM)와 영향받는 체인 목록을 신속히 파악할 수 있어야 한다. 취약점 공지, validator upgrade, 네트워크 중단 여부도 하위 서비스가 자동으로 읽을 수 있는 형태로 제공하는 편이 바람직하다.
 
 ### Follow-up
 
-- [Wallet] 지원 중인 Cosmos EVM 체인의 deployed `cosmos/evm` 버전을 점검하고 emergency warning·disable 경로를 확인한다.
-- [DeFi / Protocol] 배포 체인의 module version을 release gate에 연결하고 잔액·supply invariant alert를 점검한다.
-- [Chain / Infrastructure] 영향 범위와 upgrade·halt 상태를 제공하는 machine-readable security feed를 검토한다.
+- [Wallet] 지원 중인 Cosmos EVM 체인에 배포된 `cosmos/evm` 버전과 긴급 경고·비활성화 절차를 점검한다.
+- [DeFi / Protocol] 체인 module version을 배포 전 필수 점검 항목에 넣고 잔액·공급량 이상 탐지 알림을 확인한다.
+- [Chain / Infrastructure] 영향 범위와 업그레이드·중단 상태를 자동으로 전달할 보안 피드를 검토한다.
 
 ---
 
-## 2. Ledger 공통 SDK 취약점: "표시한 내용과 서명한 내용"의 불일치
+## 2. Ledger 공통 SDK 취약점, 확인한 내용과 서명한 내용이 달라질 수 있다
 
-Ledger의 [LSB-023](https://donjon.ledger.com/lsb/023/)은 사용자가 첫 번째 작업을 검토하는 동안 악성 host가 다른 APDU command(Wallet 소프트웨어 Ledger에게 보내는 low-level 명령)를 끼워 넣을 수 있던 문제를 설명한다. 취약한 앱에서는 화면에 표시한 뒤에도 signing parameter가 바뀔 수 있어, 사용자가 Transaction A를 확인했지만 Transaction B의 parameter에 서명하는 상황이 가능했다. Ledger는 공개 시점까지 실제 악용 증거는 없다고 밝혔다.
+Ledger의 [LSB-023](https://donjon.ledger.com/lsb/023/)은 사용자가 작업 내용을 확인하는 사이 악성 host가 다른 APDU command를 끼워 넣을 수 있던 문제를 다룬다. APDU command는 지갑 소프트웨어가 Ledger 기기에 보내는 저수준 명령이다. 취약한 앱에서는 화면에 내용을 표시한 뒤에도 서명값이 바뀔 수 있었다. 사용자는 Transaction A를 확인했지만 실제로는 Transaction B의 값에 서명하는 상황이 생길 수 있었다. Ledger는 공개 당시 실제 악용 사례는 확인되지 않았다고 밝혔다.
 
-핵심은 firmware보다 **shared Ledger Secure SDK**에 있었다는 점이다. 수정은 `v26.6.1`에 포함됐고, 영향을 받는 앱은 이 SDK로 다시 빌드되어 배포돼야 한다. firmware만 업데이트해서는 수정이 전달되지 않는다.
+문제의 원인은 기기 firmware가 아니라 여러 앱이 함께 쓰는 **Ledger Secure SDK**에 있었다. 수정 사항은 `v26.6.1`에 반영됐으며, 영향을 받는 앱은 새 SDK로 다시 빌드해 배포해야 한다. Firmware만 업데이트해서는 해결되지 않는다.
 
 ### 왜 중요한가
 
-Hardware wallet의 device screen을 절대적으로 신뢰 가능한 boundary로 간주할 수 없다는 사례다. host와 app 사이의 command sequencing, 그리고 검토 중 상태 전이가 같은 수준으로 중요해진다.
+Hardware wallet 화면만으로 안전한 서명을 보장할 수 없다는 사례다. Host와 app 사이에서 명령이 오가는 순서와 사용자가 내용을 확인하는 동안의 상태 변화도 화면 표시만큼 중요하다.
 
 ### Product / Engineering 관점
 
-**Wallet / Custody:** Client는 엄격한 APDU sequencing과 명시적인 signing state machine을 가져야 한다. Ledger firmware version뿐 아니라 최소 지원 Ledger App version도 관리해야 한다. Swap, plugin, simulation, clear signing과 blind signing이 섞이는 흐름일수록 검증 범위가 넓어진다.
+**Wallet / Custody:** 클라이언트는 APDU 명령 순서를 엄격히 통제하고 서명 상태를 명확하게 관리해야 한다. Ledger firmware version뿐 아니라 최소 지원 Ledger App version도 정해야 한다. Swap, plugin, simulation, clear signing, blind signing이 한 과정에 섞일수록 확인해야 할 범위도 넓어진다.
 
-**DeFi / dApp:** Transaction simulation이나 human-readable preview를 제공하더라도 마지막 device confirmation까지 동일한 calldata와 authorization scope가 유지되는지 확인해야 한다. dApp이 표시한 의도와 hardware app이 해석한 payload 사이의 불일치도 관측 가능한 오류로 다뤄야 한다.
+**DeFi / dApp:** 거래 시뮬레이션이나 사람이 읽을 수 있는 미리보기를 제공하더라도 마지막 기기 확인 단계까지 같은 calldata와 권한 범위가 유지되는지 검증해야 한다. dApp이 보여준 거래 의도와 하드웨어 앱이 해석한 payload가 다르면 즉시 오류를 감지할 수 있어야 한다.
 
-**Exchange / Signing Infrastructure:** Hardware signer를 withdrawal, treasury, validator 운영에 사용하는 조직은 firmware inventory만으로 patch 상태를 판단해서는 안 된다. Device별 app version과 배포된 SDK lineage를 asset inventory에 포함할 필요가 있다.
+**Exchange / Signing Infrastructure:** 출금, treasury, validator 운영에 hardware signer를 쓰는 조직이라면 firmware 목록만 보고 보안 패치 여부를 판단해서는 안 된다. 기기별 app version과 해당 앱이 사용한 SDK 계보도 자산 목록에 포함해야 한다.
 
 ### Follow-up
 
-- [Wallet / Custody] Ledger 연동에서 firmware와 app version을 각각 검증하고 최소 app version 정책을 적용한다.
-- [DeFi / dApp] 시뮬레이션·preview 이후 device에 전달되는 signing payload가 바뀌지 않는지 end-to-end test로 확인한다.
-- [Exchange / Signing Infrastructure] 운영 중인 device의 app version과 SDK lineage를 inventory에서 추적한다.
+- [Wallet / Custody] Ledger 연동 시 firmware와 app version을 따로 확인하고 최소 지원 app version을 적용한다.
+- [DeFi / dApp] 시뮬레이션이나 미리보기 이후 기기로 전달되는 서명 payload가 바뀌지 않는지 end-to-end test로 확인한다.
+- [Exchange / Signing Infrastructure] 운영 중인 기기의 app version과 SDK 계보를 자산 목록에서 추적한다.
 
 ---
 
 ## 3. Monad가 주소와 인증 수단을 분리하는 계정 모델을 제안
 
-Monad는 **Flexible and Upgradeable Account Authentication** 초안을 공개했다. 이 설계는 account address를 유지한 채 그 주소를 제어하는 authenticator를 추가·교체·폐기할 수 있게 하는 방향이다. 보도된 초안은 key rotation, passkey, multisig recovery, social recovery, 그리고 post-quantum signature scheme으로의 전환을 염두에 둔다. 현재는 [초기 draft](https://cryptodaily.co.uk/2026/08/monad-wallet-key-rotation-without-address-change)이며 구현 specification과 합의 과정이 남아 있다.
+Monad는 **Flexible and Upgradeable Account Authentication** 초안을 공개했다. 주소는 그대로 둔 채 해당 주소를 제어하는 authenticator를 추가하거나 교체하고 폐기할 수 있도록 하는 구상이다. Key rotation, passkey, multisig recovery, social recovery는 물론 post-quantum signature scheme으로의 전환까지 염두에 뒀다. 아직은 [초기 초안](https://cryptodaily.co.uk/2026/08/monad-wallet-key-rotation-without-address-change) 단계로, 구체적인 구현 명세와 합의 과정이 남아 있다.
 
 ### 왜 중요한가
 
-일반적으로 이런 기능은 smart account나 account abstraction 계층에서 구현된다. Monad의 접근은 이를 protocol-level account model까지 내리려는 시도다. 주소는 지속적인 identity가 되고, authentication은 교체 가능한 구성으로 바뀐다.
+이런 기능은 보통 smart account나 account abstraction 계층에서 구현한다. Monad는 이를 protocol 수준의 계정 모델에 넣으려 한다. 주소는 계속 유지되는 식별자가 되고, 인증 수단은 필요에 따라 바꿀 수 있는 구성 요소가 된다.
 
 ### Product / Engineering 관점
 
-**Wallet / Custody:** Account를 `address ↔ private key` 관계가 아니라 `address + authentication configuration`으로 다뤄야 할 수 있다. Recovery UX, key export, passkey, hardware signer, transaction authorization API를 독립적인 모듈로 유지하는 편이 유리하다.
+**Wallet / Custody:** 계정을 더는 `address ↔ private key`의 고정 관계로만 볼 수 없게 된다. `address + authentication configuration`으로 다루려면 recovery UX, key export, passkey, hardware signer, transaction authorization API를 서로 독립적으로 설계하는 편이 유리하다.
 
-**DeFi / dApp:** 인증 수단이 바뀌어도 주소와 포지션은 유지될 수 있지만, authenticator 변경 중의 권한과 finality는 별도 위험이 된다. 고액 action, allowance 변경, governance vote에서 최근 인증 변경 여부를 정책 신호로 사용할 가능성이 생긴다.
+**DeFi / dApp:** 인증 수단이 바뀌어도 주소와 포지션은 유지되지만, 변경이 확정되기 전후의 권한 상태는 새로운 위험 요인이 된다. 고액 거래, allowance 변경, governance vote에서는 최근 인증 수단이 바뀌었는지를 추가 보안 신호로 활용할 수 있다.
 
-**Identity / Infrastructure:** Indexer와 account API는 단일 public key보다 authenticator set, recovery authority, 변경 대기 상태를 표현해야 한다. 기존 EOA 가정을 사용하는 analytics·compliance tooling도 같은 주소의 인증 이력을 해석할 수 있어야 한다.
+**Identity / Infrastructure:** Indexer와 account API는 하나의 public key만 보여주는 데서 벗어나 authenticator 목록, 복구 권한, 변경 대기 상태까지 표현해야 한다. EOA를 전제로 만든 분석·compliance 도구도 같은 주소의 인증 변경 이력을 해석할 수 있어야 한다.
 
 ### Follow-up
 
-- [Wallet / Custody] Recovery authority, authentication 변경 delay, downgrade protection을 확인한다.
-- [DeFi / dApp] 인증 변경 직후의 고위험 action을 제한하거나 추가 확인하는 정책이 필요한지 검토한다.
-- [Identity / Infrastructure] Authenticator 이력과 pending change를 기존 EOA-compatible tooling이 어떻게 해석할지 검토한다.
+- [Wallet / Custody] 복구 권한, 인증 변경 대기 시간, downgrade 방지 장치를 확인한다.
+- [DeFi / dApp] 인증 수단을 바꾼 직후에는 고위험 거래를 제한하거나 추가 확인을 요구할지 검토한다.
+- [Identity / Infrastructure] 기존 EOA 호환 도구가 authenticator 변경 이력과 대기 중인 변경을 어떻게 해석할지 점검한다.
 
 ---
 
-## 4. Firefox 악성 Wallet Extension 캠페인이 사칭 공격의 산업화를 보여주다
+## 4. 조직화된 지갑 확장 프로그램 사칭 공격
 
-Socket의 [조사](https://www.socket.dev/blog/firefox-crypto-wallet-theft)는 코드와 인프라를 공유하는 77개의 Firefox extension identity를 추적했고, 이 중 40개에서 지갑 또는 credential 탈취 기능을 확인했다. 이들은 OKX, Rabby, TronLink 등을 사칭했으며, seed phrase와 private key를 수집하거나 원격 콘텐츠로 피싱 화면을 제공했다. Socket은 이 캠페인을 **Offside Wallet Theft Factory**로 부른다.
+Socket의 [조사](https://www.socket.dev/blog/firefox-crypto-wallet-theft)는 코드와 인프라가 겹치는 Firefox 확장 프로그램 77개를 추적했다. 이 가운데 40개에서 지갑 정보나 로그인 정보를 훔치는 기능이 확인됐다. 공격자는 OKX, Rabby, TronLink 등을 사칭해 seed phrase와 private key를 수집하거나 외부 서버에서 피싱 화면을 불러왔다. Socket은 이 공격 집단을 **Offside Wallet Theft Factory**라고 명명했다.
 
 ### 왜 중요한가
 
-공격은 단순한 phishing website 복제를 넘어선다. 공격자는 기존 extension identity와 version history를 활용하고, open-source wallet 코드를 복제하며, 원격 인프라를 통해 동작을 교체한다. 공식 extension store에 등록됐다는 사실만으로는 충분한 신뢰 신호가 되기 어렵다.
+이번 사례는 단순히 phishing website를 복제하는 수준을 넘어섰다. 공격자는 기존 확장 프로그램의 식별자와 업데이트 이력을 활용하고, open-source wallet 코드를 베끼며, 외부 서버를 통해 동작을 바꿨다. 공식 extension store에 등록됐다는 사실만으로는 안전성을 보장하기 어렵다.
 
 ### Product / Engineering 관점
 
-**Wallet:** Publisher authenticity 자체가 product surface가 된다. 공식 website에서 검증된 설치 링크를 제공하고, 공식 extension ID를 공개하며, 앱 안에서 설치 출처를 안내해야 한다. Conflicting 또는 fake provider 탐지 역시 검토 대상이다.
+**Wallet:** 배포 주체가 진짜인지 확인하는 과정도 제품 경험의 일부가 된다. 공식 웹사이트에 검증된 설치 링크와 extension ID를 공개하고, 앱 안에서도 올바른 설치 경로를 안내해야 한다. 서로 충돌하는 provider나 가짜 provider를 탐지하는 기능도 검토할 만하다.
 
-**DeFi / dApp:** 연결된 provider가 유명 wallet의 이름과 API를 흉내 낼 수 있으므로 provider injection만으로 신뢰를 확정해서는 안 된다. 고위험 transaction에서는 origin, chain, spender, simulation 결과를 다시 확인하고 wallet 선택 화면에서 공식 설치 경로를 제공할 필요가 있다.
+**DeFi / dApp:** 연결된 provider가 유명 지갑의 이름과 API를 흉내 낼 수 있으므로 provider가 주입됐다는 사실만으로 신뢰해서는 안 된다. 고위험 거래에서는 origin, chain, spender, simulation 결과를 다시 확인하고, 지갑 선택 화면에서도 공식 설치 경로를 안내할 필요가 있다.
 
-**Platform / Security:** Extension marketplace와 browser 보안팀은 publisher identity, code similarity, remote-content dependency, 권한 변화, version history를 결합해 campaign 단위로 탐지해야 한다. 개별 listing 삭제만으로는 같은 인프라를 쓰는 변종을 막기 어렵다.
+**Platform / Security:** 확장 프로그램 마켓과 브라우저 보안팀은 배포자 정보, 코드 유사도, 외부 콘텐츠 의존성, 권한 변경, version history를 함께 분석해 공격 집단 단위로 탐지해야 한다. 개별 등록 항목만 삭제해서는 같은 인프라를 쓰는 변종을 막기 어렵다.
 
 ### Follow-up
 
-- [Wallet] 설치 funnel과 support 문서에 canonical extension ID가 명시돼 있는지 점검한다.
-- [DeFi / dApp] Provider provenance와 고위험 transaction 재확인 절차를 connection threat model에 반영한다.
-- [Platform / Security] 유사 코드·권한·원격 인프라를 묶어 탐지하고 연관 extension을 함께 차단하는 절차를 검토한다.
+- [Wallet] 설치 과정과 지원 문서에 공식 extension ID가 명시돼 있는지 점검한다.
+- [DeFi / dApp] Provider의 출처 확인과 고위험 거래 재확인 절차를 연결 단계의 threat model에 반영한다.
+- [Platform / Security] 코드·권한·외부 인프라가 비슷한 확장 프로그램을 함께 탐지하고 차단하는 절차를 검토한다.
 
 ---
 
-## 5. TRON이 EVM 호환성과 Passkey용 primitive를 확장
+## 5. TRON이 EVM 호환성을 높이고 passkey 기반 기능을 확장
 
-TRON의 mandatory node upgrade인 [GreatVoyage `v4.8.2 (Pyrrho)`](https://github.com/tronprotocol/java-tron/releases/tag/GreatVoyage-v4.8.2)는 TVM을 Ethereum Pectra·Osaka 실행 환경에 더 가깝게 맞춘다. 이번 릴리스에는 WebAuthn과 passkey, Apple Secure Enclave, Android Keystore에서 널리 쓰이는 `secp256r1`/P-256 curve의 signature verification precompile이 포함됐다. TRON의 [버전 문서](https://tronprotocol.github.io/documentation-en/releases/versions/v4.8.2/)도 Pectra·Osaka 대응과 관련 precompile 변경을 설명한다.
+TRON의 필수 노드 업그레이드인 [GreatVoyage `v4.8.2 (Pyrrho)`](https://github.com/tronprotocol/java-tron/releases/tag/GreatVoyage-v4.8.2)는 TVM을 Ethereum Pectra·Osaka 실행 환경에 한층 가깝게 맞춘다. 이번 릴리스에는 WebAuthn, passkey, Apple Secure Enclave, Android Keystore에서 널리 쓰는 `secp256r1`/P-256 곡선의 signature verification precompile이 포함됐다. TRON의 [버전 문서](https://tronprotocol.github.io/documentation-en/releases/versions/v4.8.2/)에도 Pectra·Osaka 호환과 관련 precompile 변경 사항이 정리돼 있다.
 
-TRON은 address-less signature verification과 cross-chain messaging을 위한 interface도 제안하고 있다. [TIP-7913](https://github.com/tronprotocol/tips/issues/7913)은 다양한 signature verifier를, [TIP-7786](https://github.com/tronprotocol/tips/issues/7786)은 공통 cross-chain messaging gateway를 다룬다.
+TRON은 주소에 종속되지 않는 signature verification과 cross-chain messaging을 위한 interface도 제안했다. [TIP-7913](https://github.com/tronprotocol/tips/issues/7913)은 여러 방식의 signature verifier를, [TIP-7786](https://github.com/tronprotocol/tips/issues/7786)은 공통 cross-chain messaging gateway를 다룬다.
 
 ### 왜 중요한가
 
-Ethereum이 아닌 체인도 완전히 독자적인 execution semantics를 유지하기보다 Ethereum-compatible primitive를 적극적으로 수용하고 있다. 이는 multichain wallet에서 chain 이름보다 capability를 중심으로 기능을 추상화해야 한다는 신호다.
+Ethereum 계열이 아닌 체인도 독자적인 실행 방식만 고수하기보다 Ethereum과 호환되는 기반 기능을 적극적으로 받아들이고 있다. Multichain 제품도 체인 이름에 따라 기능을 나누기보다 각 체인이 실제로 지원하는 기능을 기준으로 설계해야 한다는 신호다.
 
 ### Product / Engineering 관점
 
-**Wallet / Custody:** `if (chain === "tron")` 같은 체인별 분기보다 `supportsPasskey`, `supportsEvmSigning`, `supportsSmartAccount`처럼 capability를 표현하는 구조가 확장에 유리하다. EVM transaction·authentication abstraction을 재사용하고 얇은 chain-specific adapter를 둘 여지가 커진다.
+**Wallet / Custody:** `if (chain === "tron")`처럼 체인마다 분기하기보다 `supportsPasskey`, `supportsEvmSigning`, `supportsSmartAccount`처럼 지원 기능을 드러내는 구조가 확장에 유리하다. EVM transaction과 authentication에 쓰던 공통 구조를 재사용하고, 체인별 차이는 얇은 adapter에서 처리할 수 있다.
 
-**DeFi / dApp:** P-256 verification 비용과 호출 방식이 안정되면 passkey 기반 onboarding이나 session authorization을 TRON에서도 설계할 수 있다. 다만 precompile 지원 자체와 account recovery, replay protection, relayer UX까지 갖춘 product-ready account flow는 구분해야 한다.
+**DeFi / dApp:** P-256 verification 비용과 호출 방식이 안정되면 TRON에서도 passkey 기반 onboarding이나 session authorization을 설계할 수 있다. 다만 precompile이 있다는 사실과 account recovery, replay protection, relayer UX까지 갖춘 실제 제품 수준의 계정 흐름은 구분해야 한다.
 
-**Infrastructure / Cross-chain:** `supportsCrossChainMessaging` 같은 capability는 interface 존재 여부뿐 아니라 mainnet activation, gateway implementation, message finality, replay·domain separation까지 표현해야 한다. 표준화 제안과 실제 production support를 같은 상태로 취급해서는 안 된다.
+**Infrastructure / Cross-chain:** `supportsCrossChainMessaging` 같은 항목에는 interface 유무뿐 아니라 메인넷 활성화 여부, gateway 구현, message finality, replay 방지, domain separation까지 담겨야 한다. 표준 제안이 나온 단계와 실제 운영 환경에서 쓸 수 있는 단계를 같게 봐서는 안 된다.
 
 ### Follow-up
 
-- [Wallet / Custody] TRON integration에서 재사용 가능한 EVM signing·authentication 경계를 정의한다.
-- [DeFi / dApp] P-256 precompile을 이용한 passkey flow의 비용, recovery, replay protection을 prototype으로 검증한다.
-- [Infrastructure / Cross-chain] Passkey verification과 cross-chain messaging primitive의 mainnet activation 및 구현 성숙도를 분리해 추적한다.
+- [Wallet / Custody] TRON 연동에서 EVM signing·authentication 기능을 어디까지 공통으로 쓸지 정한다.
+- [DeFi / dApp] P-256 precompile을 활용한 passkey 흐름의 비용, recovery, replay protection을 prototype으로 검증한다.
+- [Infrastructure / Cross-chain] Passkey verification과 cross-chain messaging 기능의 메인넷 활성화 여부와 구현 성숙도를 나눠 추적한다.
 
 ---
 
 ## 이번 주 우선순위
 
-가장 즉각적인 과제는 Cosmos EVM 취약점 점검이다. Wallet뿐 아니라 해당 체인에 배포된 DeFi protocol, indexer, bridge, validator infrastructure 모두 upstream module version과 비상 대응 상태를 확인해야 한다. 두 번째는 Ledger SDK 대응이다. Wallet·custody·exchange와 이를 연결하는 dApp은 hardware wallet display를 신뢰 경계의 전부로 보던 가정을 다시 검토해야 한다.
+가장 시급한 과제는 Cosmos EVM 취약점 점검이다. Wallet뿐 아니라 해당 체인에 배포된 DeFi protocol, indexer, bridge, validator infrastructure도 상위 module version과 비상 대응 상태를 확인해야 한다. 다음은 Ledger SDK 대응이다. Wallet·custody·exchange와 이를 연결하는 dApp 모두 hardware wallet 화면만 안전하면 된다는 가정을 다시 검토할 필요가 있다.
 
-더 큰 흐름은 account identity와 key가 분리되고, 사용자 인증이 passkey와 programmable authentication으로 이동하는 방향이다. 제품군마다 노출 지점은 다르지만 **chain representation → transaction execution → authentication/signing → security health state**를 분리해 다루는 구조는 Wallet, DeFi, custody, infrastructure 전반에 공통된 설계 과제가 된다.
+더 큰 흐름은 계정 식별자와 key가 분리되고, 사용자 인증 방식이 passkey와 programmable authentication으로 옮겨가는 것이다. 제품마다 영향을 받는 지점은 다르지만 **체인 정보 → 거래 실행 → 인증·서명 → 보안 상태**를 서로 분리하는 일은 지갑, DeFi, 수탁, 인프라 전반의 공통 설계 과제가 되고 있다.
 
 > 브리핑은 매주 월요일 Codex로 생성된 분석 자료를 기반으로 작성된다. 게재 전 블로그 운영자의 직접 검수 및 승인을 거친다.
