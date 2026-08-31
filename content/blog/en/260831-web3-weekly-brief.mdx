@@ -1,0 +1,151 @@
+---
+title: "Web3 Weekly Brief 2026/08/31"
+description: "A weekly brief on Cosmos EVM and Ledger SDK vulnerabilities, upgradeable account authentication, wallet-extension impersonation, and TRON passkey primitives."
+date: "2026-08-31"
+category: "crypto"
+subcategory: "web3-brief"
+tags: ["Web3", "Wallet Security", "Cosmos EVM", "Ledger", "Account Abstraction", "TRON"]
+published: true
+---
+
+The clearest theme last week was a shift in **security risk from individual applications to shared infrastructure**. The Cosmos EVM and Ledger Secure SDK incidents show how one widely reused module can expose many chains and applications at once.
+
+Meanwhile, Monad and TRON are separating addresses, authentication methods, and execution environments. Teams building wallets, DeFi protocols, dApps, custody products, and chain infrastructure increasingly need to **manage authentication and security status independently of chain support**.
+
+## 1. A Cosmos EVM vulnerability was exploited across six chains
+
+According to the Cosmos Labs [post-mortem](https://github.com/cosmos/security/blob/main/communications/cosmos_evm_GHSA-7g4w-cg88-2cq2_post_mortem.md), attackers exploited `GHSA-7g4w-cg88-2cq2` from August 20 through 25 to steal funds from several Cosmos-based chains. The flaw was a **missing balance-underflow guard** in the shared Cosmos EVM `StateDB`.
+
+> Missing balance-underflow guard: without a check for negative balances, an arithmetic underflow can turn a negative result into a very large positive number.
+
+Under specific vesting and delegation flows, the EVM calculated an abnormally large spendable balance, allowing attackers to transfer funds that did not exist.
+
+The affected releases are `<0.6.2` and `0.7.0–0.7.1`; fixes are included in `0.6.2` and `0.7.2+`. The Cosmos security team coordinated with roughly 40 chains, and six networks were known to have been exploited.
+
+### Why it matters
+
+The incident shows the **blast radius of shared modules** in modular chains. Even a chain with sound application code can inherit a critical accounting flaw from its execution layer.
+
+### Product / engineering implications
+
+**Wallet:** Chain-support pipelines should treat runtime and module versions as security data, not just compatibility data. Wallets that add networks from a registry need a way to flag vulnerable `cosmos/evm` versions, halted chains, emergency upgrades, and temporarily disabled networks.
+
+**DeFi / protocol:** An application audit cannot cover every flaw in the underlying execution layer. Pre-deployment checks should include the target chain's module version and security advisories, backed by independent monitoring for unexpected balance or supply changes.
+
+**Chain / infrastructure:** Operators need to identify their software bill of materials and affected chains quickly. Vulnerability notices, validator upgrades, and halt status should also be published in a machine-readable format that downstream services can consume.
+
+### Follow-up
+
+- [Wallet] Audit the `cosmos/evm` version deployed on each supported chain and test emergency warning and disable controls.
+- [DeFi / protocol] Add chain module versions to release gates and review alerts for balance and supply anomalies.
+- [Chain / infrastructure] Consider a machine-readable security feed for affected networks, upgrades, and halts.
+
+---
+
+## 2. A Ledger SDK flaw could change a transaction after review
+
+Ledger's [LSB-023](https://donjon.ledger.com/lsb/023/) describes a flaw that let a malicious host inject another APDU command while the user was reviewing an operation. APDU commands are low-level instructions sent from wallet software to a Ledger device. In a vulnerable app, signing parameters could change after they appeared on screen: the user might review Transaction A but sign values from Transaction B. Ledger said it had found no evidence of exploitation at the time of disclosure.
+
+The flaw sits in the **shared Ledger Secure SDK**, not in the device firmware. Ledger fixed it in `v26.6.1`, but affected apps must be rebuilt and released with the updated SDK. Updating firmware alone is not enough.
+
+### Why it matters
+
+A hardware-wallet screen is not a complete trust boundary on its own. The order of commands between the host and app—and any state changes while the user is reviewing a transaction—matter just as much as the final display.
+
+### Product / engineering implications
+
+**Wallet / custody:** Clients need strict APDU sequencing and a clearly defined signing state machine. They should enforce minimum Ledger App versions alongside firmware requirements. The risk grows when swaps, plugins, simulation, clear signing, and blind signing overlap in one flow.
+
+**DeFi / dApp:** A transaction simulation or readable preview is useful only if the same calldata and authorization scope reach the final device prompt. Products should surface any mismatch between the transaction the dApp presented and the payload the hardware app interpreted.
+
+**Exchange / signing infrastructure:** Organizations using hardware signers for withdrawals, treasury operations, or validators cannot track patch status through firmware alone. Their asset inventory also needs each device's app version and the SDK release used to build it.
+
+### Follow-up
+
+- [Wallet / custody] Check firmware and app versions separately, and enforce a minimum supported app version.
+- [DeFi / dApp] Add end-to-end tests to prove that the payload cannot change after simulation or preview.
+- [Exchange / signing infrastructure] Track app versions and SDK lineage for every production device.
+
+---
+
+## 3. Monad proposed an account model that separates address from authentication
+
+Monad published a draft for **Flexible and Upgradeable Account Authentication**. It would let an account add, replace, or retire authenticators without changing its address. The proposal covers key rotation, passkeys, multisig and social recovery, and an eventual move to post-quantum signature schemes. It is still an [early draft](https://cryptodaily.co.uk/2026/08/monad-wallet-key-rotation-without-address-change), with implementation details and consensus work yet to come.
+
+### Why it matters
+
+These features usually live in smart accounts or account-abstraction layers. Monad wants to bring them into the protocol's account model instead. The address would remain the stable identity, while authentication could change over time.
+
+### Product / engineering implications
+
+**Wallet / custody:** Products may need to model an account as `address + authentication configuration`, rather than a fixed `address ↔ private key` pair. Separating recovery UX, key export, passkeys, hardware signers, and authorization APIs would make that shift easier.
+
+**DeFi / dApp:** An address and its positions may persist through an authentication change, but the transition creates new questions about authority and finality. A recent authenticator change could become an additional risk signal for large transactions, allowance updates, or governance votes.
+
+**Identity / infrastructure:** Indexers and account APIs may need to expose authenticator sets, recovery authority, and pending changes—not just a single public key. Analytics and compliance tools built around EOA assumptions will also need to interpret an address's authentication history.
+
+### Follow-up
+
+- [Wallet / custody] Review recovery authority, delays on authentication changes, and downgrade protection.
+- [DeFi / dApp] Decide whether high-risk actions need limits or extra confirmation immediately after an authenticator change.
+- [Identity / infrastructure] Test how EOA-compatible tools interpret authenticator history and pending changes.
+
+---
+
+## 4. A coordinated Firefox campaign impersonated popular wallets
+
+Socket's [investigation](https://www.socket.dev/blog/firefox-crypto-wallet-theft) linked 77 Firefox extensions through shared code and infrastructure. Forty of them were confirmed to steal wallet data or credentials. The extensions impersonated products such as OKX, Rabby, and TronLink, collecting seed phrases and private keys or loading phishing screens from remote servers. Socket named the operation the **Offside Wallet Theft Factory**.
+
+### Why it matters
+
+This goes well beyond copying a phishing website. The attackers reused extension identities and update histories, cloned open-source wallet code, and changed behavior through remote infrastructure. A listing in an official extension store is no longer enough to establish trust.
+
+### Product / engineering implications
+
+**Wallet:** Verifying the publisher is now part of the product experience. Teams should offer verified installation links on their official sites, publish canonical extension IDs, explain provenance in the product, and consider detecting conflicting or fake providers.
+
+**DeFi / dApp:** A malicious provider can mimic the name and API of a familiar wallet, so injection alone cannot establish trust. High-risk transactions should re-confirm the origin, chain, spender, and simulation result. Wallet-selection screens should also link to official installation pages.
+
+**Platform / security:** Extension marketplaces and browser-security teams need to detect campaigns, not just individual listings. Publisher identity, code similarity, remote-content dependencies, permission changes, and version history can reveal related variants that share the same infrastructure.
+
+### Follow-up
+
+- [Wallet] Make sure installation flows and support documents display the canonical extension ID.
+- [DeFi / dApp] Add provider provenance and high-risk transaction checks to the connection threat model.
+- [Platform / security] Consider blocking related extensions based on shared code, permissions, and remote infrastructure.
+
+---
+
+## 5. TRON adds P-256 support and moves closer to EVM parity
+
+TRON's mandatory [GreatVoyage `v4.8.2 (Pyrrho)`](https://github.com/tronprotocol/java-tron/releases/tag/GreatVoyage-v4.8.2) node upgrade brings TVM closer to Ethereum's Pectra and Osaka execution environments. It adds a signature-verification precompile for the `secp256r1`/P-256 curve used by WebAuthn, passkeys, Apple Secure Enclave, and Android Keystore. TRON's [release notes](https://tronprotocol.github.io/documentation-en/releases/versions/v4.8.2/) detail the Pectra and Osaka compatibility work.
+
+TRON has also proposed interfaces for address-independent signature verification and cross-chain messaging. [TIP-7913](https://github.com/tronprotocol/tips/issues/7913) covers flexible signature verifiers, while [TIP-7786](https://github.com/tronprotocol/tips/issues/7786) defines a common cross-chain messaging gateway.
+
+### Why it matters
+
+Non-Ethereum chains are increasingly adopting Ethereum-compatible building blocks instead of maintaining entirely separate execution models. Multichain products should therefore organize features around what a chain can do, rather than around the chain's name.
+
+### Product / engineering implications
+
+**Wallet / custody:** Instead of adding branches such as `if (chain === "tron")`, products can expose capabilities such as `supportsPasskey`, `supportsEvmSigning`, and `supportsSmartAccount`. Shared EVM transaction and authentication logic can then sit behind a thin chain-specific adapter.
+
+**DeFi / dApp:** If P-256 verification costs and calling conventions stabilize, teams could offer passkey onboarding or session authorization on TRON. A precompile alone, however, does not provide a production-ready account flow with recovery, replay protection, and usable relayers.
+
+**Infrastructure / cross-chain:** A flag such as `supportsCrossChainMessaging` needs to capture more than the existence of an interface. Mainnet activation, gateway implementation, message finality, replay protection, and domain separation all matter. A proposal is not the same as production support.
+
+### Follow-up
+
+- [Wallet / custody] Decide which EVM signing and authentication components a TRON integration can safely reuse.
+- [DeFi / dApp] Prototype a P-256 passkey flow and measure its cost, recovery model, and replay protection.
+- [Infrastructure / cross-chain] Track mainnet activation separately from the implementation maturity of passkey verification and cross-chain messaging.
+
+---
+
+## This week's priorities
+
+The first priority is to audit exposure to the Cosmos EVM flaw. Wallets, DeFi protocols, indexers, bridges, and validator operators should all verify their upstream module versions and emergency-response status. Ledger SDK remediation comes next. Wallets, custody providers, exchanges, and connected dApps can no longer assume that a trustworthy hardware-wallet screen secures the entire signing flow.
+
+The broader shift is the separation of account identity from keys, alongside the rise of passkeys and programmable authentication. The impact varies by product, but wallets, DeFi platforms, custody services, and infrastructure teams all benefit from separating **chain data → transaction execution → authentication and signing → security status** into distinct layers.
+
+> This brief is based on analysis generated with Codex each Monday. It is published only after the blog operator's direct review and approval.
