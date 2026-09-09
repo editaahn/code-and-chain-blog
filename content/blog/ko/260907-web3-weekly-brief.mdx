@@ -1,0 +1,139 @@
+---
+title: "Web3 Weekly Brief 2026/09/07"
+description: "Solana 결제 채널과 임대료 인하, Base 토큰화 주식, OP Stack 프라이버시, 미국 SEC 규칙 개정안을 정리한 주간 브리핑"
+date: "2026-09-07"
+category: "crypto"
+subcategory: "web3-brief"
+tags:
+  ["Web3", "Solana", "Payments", "Tokenized Stocks", "Privacy", "Regulation"]
+published: true
+---
+
+지난주에는 온체인 결제를 요청마다 처리하던 방식에서 벗어나려는 시도와 토큰화 주식·프라이버시·증권 결제 인프라의 변화가 한꺼번에 눈에 띄었다. 이제 제품팀은 거래 속도만 높일 것이 아니라 지출 한도와 자산 권리, 감사 체계, 운영 권한까지 함께 설계해야 한다.
+
+## 1. Solana AI 에이전트용 결제 채널 공개
+
+Solana Foundation은 9월 3일 [Payment Channels](https://solana.com/news/payment-channels-1-million-payments-per-second)를 공개했다. 사용자가 온체인 에스크로에 지출 한도를 맡기면, 에이전트는 그 범위 안에서 서명 메시지로 사용액을 기록하고 마지막에 한 번만 정산한다. 자금은 운영자가 아니라 프로그램이 보관하며, 남은 금액은 원래 지갑으로 되돌아간다. x402의 호출별 한도 승인과 일괄 정산, MPP session을 지원 대상으로 제시했다.
+
+> x402: 웹의 `HTTP 402 Payment Required` 응답을 활용해, HTTP 요청마다 리소스에 대한 대금 결제를 요구하는 규격
+
+> MPP session (Machine Payments Protocol): 반복 사용량을 하나의 지속 세션으로 묶어 누적 청구하는 방식
+
+공개된 벤치마크는 지갑 10만 개로 초당 100만 건 이상을 처리했다고 밝힌다. 실제 운영 환경의 성능을 보장하는 수치는 아니라는 점을 전제로 봐야 한다. 다만 요청마다 트랜잭션을 보내며 생기는 비용과 지연, 반복 승인 문제를 비수탁형 한도와 사후 정산으로 줄이려는 구현이 나왔다는 점은 주목할 만하다.
+
+### 중요성
+
+에이전트가 유료 API·데이터·추론 서비스를 잇달아 호출하면 건별 서명은 사용자 경험과 비용 구조의 병목이 된다. 그렇다고 선불 잔고를 사업자 데이터베이스에 맡기면 수탁과 환불 위험이 생긴다. 결제 채널에서는 위임할 권한의 범위, 누적 사용액, 정산 시점이 새 보안 경계가 된다.
+
+### Product / Engineering 관점
+
+**Wallet:** 채널마다 상한, 유효 기간, 허용한 수취인·서비스, 남은 한도를 보여주고 즉시 닫을 수 있어야 한다. 세션 키를 쓴다면 원본 키와 분리하고, 한도 초과·재사용·다른 서비스에서의 오용을 막는 domain separation도 점검해야 한다.
+
+**Stablecoin / Payments:** 사용량과 최종 정산액이 다를 때의 분쟁, 서비스 중단 시 환불, 수취인별 분배 규칙을 제품 약관과 프로그램 로직 모두에 분명히 담아야 한다. 실제 설계에서는 처리량 수치보다 채널을 열고 닫거나 분쟁을 처리할 때 드는 유동성 비용이 더 중요하다.
+
+**Security / Platform:** 서명 voucher의 nonce·만료 시각·누적 금액·chain ID·service ID를 검증해야 한다. 사용량을 집계하는 proxy가 과다 청구하지 못하도록 재현 가능한 로그와 독립 검증 경로도 마련할 필요가 있다.
+
+---
+
+## 2. Solana 임대료(Rent) 인하
+
+Solana는 9월 3일 [임대료 인하의 첫 단계](https://solana.com/news/how-to-reclaim-excess-sol-after-rent-reduction)를 시작했다고 설명했다. 기존 계정은 새 rent-exempt 기준보다 많은 lamport를 들고 있을 수 있다. Token Program과 Token-2022에는 계정을 닫지 않고 초과분만 옮기는 `WithdrawExcessLamports`가 있으며, 지갑·토큰 계정·mint의 권한자가 실행할 수 있다.
+
+프로그램이 소유한 PDA(Program Derived Address)는 따로 처리해야 한다. 문서는 Rent sysvar에서 현재 최소 잔액을 읽고, 계정 크기를 실제 필요 수준으로 줄인 뒤 초과분만 옮기라고 권고한다. 인하는 5단계로 진행되며 이후에도 값이 바뀔 수 있다. 고정 상수에 의존한 코드는 오작동하거나 사용자의 자금을 불필요하게 묶어둘 수 있다.
+
+### 중요성
+
+임대료는 눈에 잘 띄지 않는 운영비처럼 보이지만, 대규모 지갑과 DeFi 프로그램에서는 회수할 수 있는 잔액과 계정 유지 조건을 바꾸는 프로토콜 값이다. 특히 PDA에서 lamport를 꺼내는 코드는 권한, 소유자, 잔액 보존을 동시에 다룬다. 비용을 줄이는 기능이 곧 자금 이동 기능이 되는 셈이다.
+
+### Product / Engineering 관점
+
+**Wallet:** 토큰 계정을 닫도록 유도하기보다, 계정은 유지한 채 초과 SOL만 회수하는 선택지를 제공할 수 있다. 권한이 없는 mint나 multisig, 회수액이 작은 계정은 분명히 구분하고, 서명 전에는 수취 주소와 계정이 계속 유지된다는 사실을 보여줘야 한다.
+
+**DeFi / Protocol:** PDA 회수 instruction은 `Rent::get()`으로 현재 기준을 읽고 PDA와 권한자를 검증하며, 빠져나가는 lamport와 들어오는 lamport가 정확히 같도록 구현해야 한다. 예치금·포지션·에스크로 계정을 줄일 때는 직렬화 크기와 앞으로 쓸 확장 공간도 따져야 한다.
+
+**Chain / Infrastructure:** indexer와 회계 시스템은 계정 잔액 감소를 사용자 출금이나 공격으로 오인하지 않도록 instruction과 목적지를 함께 해석해야 한다. 대량 회수 작업은 RPC 부하, 수수료, 실패 재시도 정책까지 고려해 운영한다.
+
+### Follow-up
+
+- [Wallet] 초과 lamport 회수와 계정 폐쇄를 분리한 화면·서명 흐름을 검증한다.
+- [DeFi / Protocol] 모든 rent 계산의 하드코딩 여부와 PDA 회수 instruction의 권한·잔액 보존 검사를 점검한다.
+- [Chain / Infrastructure] 회수 transaction을 정상 운영 이벤트로 분류할 기준과 대량 실행 한도를 정한다.
+
+---
+
+## 3. Base: 실제 유통 단계로 들어선 토큰화 주식
+
+Base는 9월 1일 [토큰화 주식](https://blog.base.org/request-for-builders-tokenized-stocks)이 Coinbase 발행으로 Base에서 이용 가능하며, 미국 밖의 허용 관할에서 적격 사용자에게 제공된다고 밝혔다. Base가 직접 소비자 상품을 제공하거나 주식을 발행하는 것은 아니며, 이 자산을 활용하는 앱은 기능과 규제 준수를 각자 책임진다고 명시했다.
+
+발표는 주식을 단순히 거래 화면에 올리는 데서 끝나지 않는다. 현지 법정화폐 입금 경로와 stablecoin을 묶는 neobrokerage, 보상·추천에 지분을 쓰는 방식, 수익을 분리하거나 담보로 활용하는 대출, 에이전트와 예측 시장의 결합 등을 예시로 들었다. 다만 모든 토큰화 주식이 같은 권리와 상환 구조, 이전 제한을 지닌다는 뜻은 아니다.
+
+### 중요성
+
+토큰화 주식은 ERC-20 형태라고 해서 일반 암호자산과 같은 상품이 되지 않는다. 발행자, 법적 청구권, 거래 가능 지역, KYC, corporate action, 상환·출금 경로가 모두 자산 구조의 일부다. DeFi 조합성은 강력하지만 이런 조건을 빼면 실제 권리보다 넓은 유동성이나 담보성을 암시하는 제품이 되기 쉽다.
+
+### Product / Engineering 관점
+
+**DeFi / dApp:** 담보 가치나 liquidity pool을 설계하기 전에는 token contract의 기능만 보지 말고 이전 제한, 거래 시간, corporate action 처리, 발행자·수탁자 장애 때의 상환 경로까지 확인해야 한다. 가격 oracle도 기초 주식 가격과 토큰 자체의 유동성을 구분해야 한다.
+
+**Custody / Exchange:** 적격성·관할·제재 검사는 입금 때 한 번으로 끝나지 않을 수 있다. 전송 상대, 2차 이전, 출금, corporate action 수령 단계마다 적용되는 제약을 custody ledger와 고객 화면에 일관되게 반영해야 한다.
+
+**Regulation / Compliance:** Base의 공지는 허용 관할의 적격 사용자로 범위를 제한한다. 토큰 표시와 마케팅에서 주식 직접 소유, 파생 노출, 수익권을 뒤섞어 표현하지 말고, 배포 전에 발행 문서와 현지 판매 제한을 검토해야 한다.
+
+### Follow-up
+
+- [DeFi / Protocol] 토큰화 주식별 권리, 이전 제한, 상환·corporate action 경로를 담보·유동성 모델에 반영한다.
+- [Custody / Exchange] 적격성 검사가 필요한 lifecycle 지점과 보류·반환 처리 방식을 명세화한다.
+- [Regulation / Compliance] 자산 설명과 화면 문구가 발행 문서·허용 관할·판매 제한과 일치하는지 검토한다.
+
+---
+
+## 4. OP Stack: 필요한 정보만 감추고 감사는 가능하게
+
+Optimism은 9월 4일 [온체인 프라이버시 절충안](https://optimism.io/blog/privacy-onchain-a-map-of-the-tradeoff-space)을 정리했다. 공개 검증성과 유동성은 유지하되 필요한 정보만 숨기고, 권한 있는 주체에는 증명 가능한 열람 경로를 주는 모델을 강조한다. 글에서는 consortium network, private chain, private validium, 애플리케이션 계층을 비교하며 무엇을 누구에게서 숨길지와 비용·성능, 신뢰 가정, 규제상 감사 가능성을 함께 따져 보라고 제안한다.
+
+실제 사례로는 Sunnyside Labs가 운영하는 Privacy Boost를 들었다. ZK와 TEE를 함께 쓰는 shielded pool로, 2026년 4월부터 OP Mainnet에서 운영 중이다. 등록된 감사자는 viewing key로 정해진 범위만 열람하고 그 기록은 온체인에 남는다고 설명한다. 이는 Optimism의 기술적 관점이며, 특정 제품의 보안성이나 규제 적합성을 독립적으로 보증하는 자료는 아니다.
+
+### 중요성
+
+급여, 기관 결제, 거래 주문처럼 공개 원장에 그대로 남기기 어려운 사용 사례가 늘고 있다. 프라이버시를 별도 체인으로만 풀면 유동성과 생태계 접근성이 나뉜다. 이제 핵심은 익명성의 유무가 아니라 공개 원장, shielded flow, 선택적 공개, 제재·감사 통제를 어느 경계에서 어떻게 조합할지다.
+
+### Product / Engineering 관점
+
+**Wallet:** 사용자가 일반 주소, shielded 잔액, viewing key의 권한 범위를 혼동하지 않게 해야 한다. 복구·기기 변경·상속 흐름에서는 viewing key와 지출 키를 분리하고, 거래 전에 어떤 정보가 공개되는지 설명할 필요가 있다.
+
+**Stablecoin / Payments:** 기업 결제는 수취인·금액 비공개와 감사 가능성을 함께 요구한다. selective disclosure를 도입한다면 누가 어느 기간에 어떤 항목을 열람하는지, 권한 철회와 법적 요청에는 어떻게 대응하는지를 결제 상태와 연결해야 한다.
+
+**Security / Platform:** ZK와 TEE가 각각 무엇을 보장하는지 나눠 threat model을 작성해야 한다. TEE 손상, proving 실패, viewing key 유출, 제재 목록 변경, 자금 회수 가능성을 각각 시험하고 외부 감사 범위도 확인한다.
+
+---
+
+## 5. 미 SEC: 블록체인 주식 이전에 맞춰 transfer agent 규칙 손질
+
+> Transfer agent: 주식 발행사의 공식 주주 명부를 관리하고, 주식 이전·분할 같은 권리 변동을 처리하는 등록 기관이다. 거래를 중개하는 증권사나 자산을 보관하는 수탁기관과 달리, 누가 법적으로 주주인지 기록을 맞추는 역할을 맡는다.
+  토큰화 주식에서는 **온체인 주소와 법적 주주 명부가 일치하는지 관리하는 주체**가 될 수 있다.
+
+미국 SEC는 9월 1일 [등록 transfer agent 규칙 현대화안](https://www.sec.gov/newsroom/press-releases/2026-81-sec-proposes-modernize-rules-registered-transfer-agents)을 제안했다. SEC는 transfer agent가 국가 청산·결제 체계의 핵심이며, 기존 규칙은 1970~1980년대 이후 실질적으로 개정되지 않았다고 설명했다. 개정안은 전자 기록과 통신, 증권 발행·주식 이전에 blockchain technology를 쓰는 현재의 운영 환경을 반영한다.
+
+이는 확정 규칙이 아니다. 제안서는 Federal Register에 실린 뒤 60일 동안 의견을 받는다. 그래도 토큰화 증권을 다루는 팀에는 blockchain이 규제 체계 밖의 별도 레일이 아니라, 등록된 이전·기록·보고 기능과 맞물려야 할 기술이라는 신호다.
+
+### 중요성
+
+주식 토큰에 대해서 거래 화면은 시스템의 마지막일 뿐이다. 소유자 기록, 이전 승인, 분실·사기 처리, corporate action, 대사, 규제 보고가 맞물려야 실제 증권 결제 체계가 된다. transfer agent의 역할과 계약 경계가 불분명하면 onchain 원장과 법적 소유자 명부가 어긋날 수 있다.
+
+### Product / Engineering 관점
+
+**Custody / Exchange:** 고객 잔고, 온체인 주소, transfer agent의 공식 기록을 어떤 식별자로 연결할지 설계해야 한다. 이전 실패·동결·정정·corporate action이 발생해도 API와 고객 화면은 같은 최종 상태를 보여야 한다.
+
+**Chain / Infrastructure:** event log만으로 법적 소유권을 단정할 수 없는 경우가 있다. 처음부터 대사가 가능한 데이터 모델, audit trail, 권한 있는 정정 절차, 외부 기록 시스템과 중복 실행에도 안전한 연동을 넣는 편이 안전하다.
+
+**Regulation / Compliance:** 제안 규칙의 대상·의무·시행 시점은 아직 확정되지 않았다. 미국 관련 서비스를 제공하는 팀은 의견 수렴과 후속 규칙을 추적하되, 현재 의무와 제안 내용을 제품 정책에서 혼동하지 않아야 한다.
+
+---
+
+## 이번 주 우선순위
+
+가장 먼저 할 일은 결제 권한을 단순한 잔고가 아니라 한도·기간·수취인·정산 조건으로 다루는 것이다. Wallet, stablecoin 결제, agent platform은 서명과 결제를 분리할 때 voucher 재사용, 과다 청구, 강제 종료까지 함께 시험해야 한다.
+
+큰 흐름은 프로그래머블 자산이 실제 금융 인프라와 맞닿기 시작했다는 점이다. 토큰화 주식은 자산 권리와 규제 제약을, 프라이버시 결제는 선택적 공개와 감사 경로를, transfer agent 규칙 개정안은 법적 기록과 온체인 상태의 일치를 제품의 핵심 요구사항으로 만든다. Solana의 임대료 인하는 기초 프로토콜 값 하나도 지갑과 프로그램의 실제 자금 흐름을 바꾼다는 사실을 보여준다.
+
+> 브리핑은 매주 월요일 Codex로 생성된 분석 자료를 기반으로 작성된다. 게재 전 블로그 운영자의 직접 검수 및 승인을 거친다.

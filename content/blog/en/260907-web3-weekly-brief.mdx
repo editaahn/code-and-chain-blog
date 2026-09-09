@@ -1,0 +1,137 @@
+---
+title: "Web3 Weekly Brief 2026/09/07"
+description: "A weekly briefing summarizing Solana payment channels and rent reduction, tokenized stocks on Base, OP Stack privacy, and the U.S. SEC rule amendments."
+date: "2026-09-07"
+category: "crypto"
+subcategory: "web3-brief"
+tags: ["Web3", "Solana", "Payments", "Tokenized Stocks", "Privacy", "Regulation"]
+published: true
+---
+Last week, there were notable attempts to move away from processing on-chain payments for each request, alongside changes in tokenized stocks, privacy, and securities settlement infrastructure. Now, product teams must not only increase transaction speed but also design spending limits, asset rights, audit systems, and operational authority.
+
+## 1. Solana AI Agent Payment Channel Release
+
+On September 3, the Solana Foundation unveiled [Payment Channels](https://solana.com/news/payment-channels-1-million-payments-per-second). Users can deposit spending limits into an on-chain escrow, allowing agents to record usage within that limit through signed messages and settle only once at the end. Funds are held by the program, not the operator, and any remaining amount is returned to the original wallet. It supports x402's per-call limit approval, batch settlement, and MPP sessions.
+
+> x402: A standard that utilizes the `HTTP 402 Payment Required` response of the web to demand payment for resources with each HTTP request.
+
+> MPP session (Machine Payments Protocol): A method of bundling repeated usage into a single continuous session for cumulative billing.
+
+The released benchmark claims to have processed over a million transactions per second with 100,000 wallets. This should be viewed with the understanding that it does not guarantee performance in actual operating environments. However, the implementation aimed at reducing costs, delays, and repeated approval issues by using non-custodial limits and post-settlement is noteworthy.
+
+### Importance
+
+When agents repeatedly call paid APIs, data, or inference services, per-call signatures become a bottleneck in user experience and cost structure. Entrusting prepaid balances to a business database introduces custodial and refund risks. In payment channels, the scope of delegated authority, cumulative usage, and settlement timing become new security boundaries.
+
+### Product / Engineering Perspective
+
+**Wallet:** Each channel should display limits, validity periods, allowed recipients/services, and remaining limits, with the ability to close immediately. If using session keys, they should be separated from the original key, and domain separation should be checked to prevent overuse, reuse, or misuse by other services.
+
+**Stablecoin / Payments:** Product terms and program logic must clearly address disputes when usage and final settlement amounts differ, refunds in case of service interruptions, and distribution rules by recipient. In actual design, the liquidity cost of opening and closing channels or handling disputes is more crucial than throughput figures.
+
+**Security / Platform:** It is necessary to verify the nonce, expiration time, cumulative amount, chain ID, and service ID of the signature voucher. A reproducible log and independent verification path should be established to prevent excessive billing by proxies aggregating usage.
+
+---
+
+## 2. Solana Rent Reduction
+
+Solana announced the start of the [first phase of rent reduction](https://solana.com/news/how-to-reclaim-excess-sol-after-rent-reduction) on September 3. Existing accounts may hold more lamports than the new rent-exempt standard. The Token Program and Token-2022 have a `WithdrawExcessLamports` that allows transferring only the excess without closing the account, executable by the authority of wallets, token accounts, and mints.
+
+Program-owned PDAs (Program Derived Addresses) require separate handling. The documentation recommends reading the current minimum balance from the Rent sysvar, reducing the account size to the actual required level, and transferring only the excess. The reduction will proceed in five phases, and values may change thereafter. Code relying on fixed constants may malfunction or unnecessarily lock user funds.
+
+### Importance
+
+Rent may seem like an invisible operating cost, but in large-scale wallets and DeFi programs, it is a protocol value that changes the recoverable balance and account maintenance conditions. Especially, code extracting lamports from PDAs simultaneously deals with authority, ownership, and balance preservation. A function to reduce costs becomes a function to move funds.
+
+### Product / Engineering Perspective
+
+**Wallet:** Instead of encouraging token account closure, offer the option to maintain the account while recovering only excess SOL. Clearly distinguish mints or multisigs without authority and accounts with small recovery amounts, and ensure users see that the recipient address and account remain before signing.
+
+**DeFi / Protocol:** The PDA recovery instruction should read the current standard with `Rent::get()`, verify the PDA and authority, and ensure the outgoing and incoming lamports are exactly the same. When reducing deposit, position, or escrow accounts, consider serialization size and future expansion space.
+
+**Chain / Infrastructure:** Indexers and accounting systems should interpret instructions and destinations together to avoid mistaking account balance reductions for user withdrawals or attacks. Large-scale recovery operations should consider RPC load, fees, and retry policies.
+
+### Follow-up
+
+- [Wallet] Verify the screen and signing flow that separates excess lamport recovery from account closure.
+- [DeFi / Protocol] Check for hardcoding in all rent calculations and verify authority and balance preservation in PDA recovery instructions.
+- [Chain / Infrastructure] Establish criteria for classifying recovery transactions as normal operational events and set limits for large-scale execution.
+
+---
+
+## 3. Base: Tokenized Stocks Entering Real Circulation
+
+On September 1, Base announced that [tokenized stocks](https://blog.base.org/request-for-builders-tokenized-stocks) are available on Base through issuance by Coinbase, offered to eligible users in permitted jurisdictions outside the U.S. Base does not directly provide consumer products or issue stocks, and apps utilizing these assets are responsible for their own functionality and regulatory compliance.
+
+The announcement goes beyond merely listing stocks on a trading screen. It cites examples such as neobrokerage combining local fiat deposit routes and stablecoins, using shares for rewards and referrals, separating or using profits as collateral for loans, and combining agents with prediction markets. However, not all tokenized stocks have the same rights, redemption structures, or transfer restrictions.
+
+### Importance
+
+Tokenized stocks in ERC-20 form do not become the same product as general crypto assets. Issuers, legal claims, tradable regions, KYC, corporate actions, and redemption/withdrawal routes are all part of the asset structure. While DeFi composability is powerful, without these conditions, products can easily imply broader liquidity or collateralization than actual rights.
+
+### Product / Engineering Perspective
+
+**DeFi / dApp:** Before designing collateral value or liquidity pools, do not just look at the token contract's functions; verify transfer restrictions, trading hours, corporate action processing, and redemption routes in case of issuer/custodian failure. Price oracles should distinguish between the underlying stock price and the token's own liquidity.
+
+**Custody / Exchange:** Eligibility, jurisdiction, and sanction checks may not end with a single deposit. Constraints applied at each stage of transfer counterparties, secondary transfers, withdrawals, and corporate action receipts should be consistently reflected in the custody ledger and customer screens.
+
+**Regulation / Compliance:** Base's notice limits the scope to eligible users in permitted jurisdictions. In token representation and marketing, do not mix direct stock ownership, derivative exposure, and profit rights; review issuance documents and local sales restrictions before distribution.
+
+### Follow-up
+
+- [DeFi / Protocol] Reflect rights, transfer restrictions, redemption, and corporate action routes for each tokenized stock in collateral and liquidity models.
+- [Custody / Exchange] Specify lifecycle points requiring eligibility checks and methods for hold and return processing.
+- [Regulation / Compliance] Ensure asset descriptions and screen texts match issuance documents, permitted jurisdictions, and sales restrictions.
+
+---
+
+## 4. OP Stack: Concealing Only Necessary Information While Allowing Audits
+
+On September 4, Optimism summarized [on-chain privacy trade-offs](https://optimism.io/blog/privacy-onchain-a-map-of-the-tradeoff-space). The model emphasizes maintaining public verifiability and liquidity while concealing only necessary information and providing authorized entities with provable viewing paths. The article suggests comparing consortium networks, private chains, private validium, and application layers to consider what to hide from whom, along with costs, performance, trust assumptions, and regulatory auditability.
+
+As a real-world example, it cites Privacy Boost operated by Sunnyside Labs, a shielded pool using ZK and TEE, operational on OP Mainnet since April 2026. Registered auditors can view only a specified range with a viewing key, and the records remain on-chain. This is Optimism's technical perspective and does not independently guarantee the security or regulatory compliance of specific products.
+
+### Importance
+
+Use cases like payroll, institutional payments, and trade orders are increasingly difficult to leave on a public ledger as is. Solving privacy solely with separate chains divides liquidity and ecosystem accessibility. The core now is not the presence or absence of anonymity but how to combine public ledgers, shielded flows, selective disclosure, and sanction/audit controls at which boundaries.
+
+### Product / Engineering Perspective
+
+**Wallet:** Ensure users do not confuse general addresses, shielded balances, and the scope of viewing key permissions. In recovery, device change, and inheritance flows, separate viewing keys from spending keys and explain what information is disclosed before transactions.
+
+**Stablecoin / Payments:** Corporate payments require both recipient/amount confidentiality and auditability. If introducing selective disclosure, connect payment status with who views which items over what period, how to handle authority revocation, and legal requests.
+
+**Security / Platform:** Write a threat model dividing what ZK and TEE each guarantee. Test TEE compromise, proving failures, viewing key leaks, sanction list changes, and fund recovery possibilities, and confirm the scope of external audits.
+
+---
+
+## 5. U.S. SEC: Adjusting Transfer Agent Rules for Blockchain Stock Transfers
+
+> Transfer agent: An entity that manages the official shareholder registry of a stock issuer and handles rights changes like stock transfers and splits. Unlike brokers who mediate trades or custodians who hold assets, they align records of who legally owns shares.
+  In tokenized stocks, they can be the entity managing the alignment of **on-chain addresses with legal shareholder registries**.
+
+On September 1, the U.S. SEC proposed [modernization of registered transfer agent rules](https://www.sec.gov/newsroom/press-releases/2026-81-sec-proposes-modernize-rules-registered-transfer-agents). The SEC describes transfer agents as central to the national clearing and settlement system, noting that existing rules have not been substantially revised since the 1970s-1980s. The proposal reflects the current operating environment using electronic records and communications, and blockchain technology in securities issuance and stock transfers.
+
+This is not a finalized rule. The proposal will be open for comments for 60 days after being published in the Federal Register. Nonetheless, for teams dealing with tokenized securities, it signals that blockchain should not be seen as a separate rail outside the regulatory framework but should integrate with registered transfer, record, and reporting functions.
+
+### Importance
+
+For stock tokens, the trading screen is just the end of the system. Ownership records, transfer approvals, loss/fraud handling, corporate actions, reconciliation, and regulatory reporting must interlock to form an actual securities settlement system. If the role and contractual boundaries of the transfer agent are unclear, on-chain ledgers and legal ownership registries may misalign.
+
+### Product / Engineering Perspective
+
+**Custody / Exchange:** Design how to link customer balances, on-chain addresses, and the transfer agent's official records with identifiers. Even if transfer failures, freezes, corrections, or corporate actions occur, APIs and customer screens should show the same final state.
+
+**Chain / Infrastructure:** There are cases where legal ownership cannot be determined solely from event logs. It is safer to include a data model capable of reconciliation from the start, audit trails, authorized correction procedures, and integration safe from redundant execution with external record systems.
+
+**Regulation / Compliance:** The subject, obligations, and implementation timing of the proposed rules are not yet finalized. Teams providing U.S.-related services should track comment collection and follow-up rules but should not confuse current obligations with proposed content in product policies.
+
+---
+
+## Priorities for This Week
+
+The first task is to handle payment authority not just as a simple balance but as limits, periods, recipients, and settlement conditions. Wallets, stablecoin payments, and agent platforms should test voucher reuse, excessive billing, and forced termination when separating signatures and payments.
+
+The major trend is that programmable assets are beginning to touch actual financial infrastructure. Tokenized stocks make asset rights and regulatory constraints, privacy payments make selective disclosure and audit paths, and the transfer agent rule amendments make the alignment of legal records and on-chain states core product requirements. Solana's rent reduction shows that even a basic protocol value can change the actual fund flow of wallets and programs.
+
+> The briefing is prepared every Monday based on analysis generated by Codex. It undergoes direct review and approval by the blog operator before publication.
