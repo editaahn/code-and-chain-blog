@@ -16,19 +16,15 @@ This brief covers announcements and incidents from September 7–13, 2026, in Ko
 
 Circle announced its [Noble sunset schedule](https://www.circle.com/blog/circle-is-discontinuing-support-for-usdc-and-cctp-v1-on-noble) on September 10. Noble will not receive CCTP V2. Circle Mint issuance stops October 13, 2026; CCTP V1 burn limits begin shrinking October 31. The Noble USDC contract and CCTP routes pause fully on January 12, 2027. Snapshot-based manual redemption begins January 13.
 
-This is not a Cosmos-wide USDC withdrawal. Manual redemption has conditions: compliance and security checks, a holder-controlled wallet, and an address included in the Noble snapshot.
-
-### Why it matters
+This is not a Cosmos-wide USDC withdrawal. After the sunset, manual redemption means applying separately to Circle to process remaining balances rather than using the normal transfer and redemption routes. Applicants must meet Circle's compliance and security requirements. The USDC must be in a wallet the holder controls, and its address must appear in the Noble balance snapshot taken on the pause date. A remaining balance alone does not guarantee immediate withdrawal. Payment methods, required documents, fees, processing times, and other procedural details have not yet been published.
 
 Chain support is an operating agreement covering issuance, movement, and redemption, not just a network-selector entry. A single sunset date hides earlier liquidity and route-capacity constraints. Represented assets on other IBC chains should not be collapsed into one Noble balance: their paths and final locations affect what a migration must verify.
 
 ### Product / Engineering perspective
 
-**Wallet:** Separate new-deposit recommendations from guidance for existing balances. A retiring network should not remain the default receiving route. Show actual destination support, fees, limits, and completion steps; do not present manual redemption as an unconditional withdrawal button.
+**Wallet:** Direct users receiving new USDC to networks with continuing support, while giving existing Noble holders instructions for moving their balances to another network. Explain whether the receiving network or exchange supports that USDC, what the transfer costs, how much can move at once, and which steps the user must complete. Do not present manual redemption as an unconditional withdrawal button.
 
 **DeFi / Protocol:** Trace pool, vault, and collateral connections to Noble USDC through IBC, then test liquidation and liquidity recovery under concentrated withdrawals. Measure exposure by contract and denom trace rather than ticker. Stopping new deposits and unwinding existing positions are different operating decisions.
-
-**Chain / Infrastructure:** Distinguish issuance, transfer, and redemption availability in SDK metadata, with updateable route status and limits. Transfers already in progress still need tracking, retries, and support as a route retires.
 
 ### Follow-up
 
@@ -38,11 +34,11 @@ Chain support is an operating agreement covering issuance, movement, and redempt
 
 ## 2. Trezor's email incident exposes a legitimate-infrastructure phishing path
 
+[Trezor](https://trezor.io/) provides hardware wallets that keep cryptocurrency private keys on a dedicated device, alongside the Trezor Suite management app. Users manage assets and transactions in the app, then review and sign transactions on the device. A wallet backup, used to recover a lost wallet, is a critical secret that can grant access to its assets.
+
 Trezor disclosed the [Brevo incident](https://trezor.io/blog/news/security-incident-at-brevo-our-third-party-email-provider) on September 10. The September 9 incident targeted roughly 347,000 opted-in newsletter addresses with an app requesting wallet backups. Trezor says no other company system was affected. Address-list export was unconfirmed; it is treating the addresses as known to the attacker.
 
 [Brevo's postmortem](https://status.brevo.com/incidents/01M266V1CZKJQNGZRNEGFD5CQE/write-up) identifies a SAML SSO scoping flaw: authentication through one organization granted access to other organizations available to the user. Legitimate sending infrastructure meant the messages passed ordinary email authentication checks.
-
-### Why it matters
 
 An authentic sending domain does not authenticate the requested action. This was not a confirmed hardware-wallet compromise; an external SaaS authorization failure enabled an attack impersonating recovery. Potential email-audience exposure and the financial risk of submitting a backup require different explanations.
 
@@ -60,15 +56,11 @@ An authentic sending domain does not authenticate the requested action. This was
 
 The Ethereum Foundation Protocol Cluster published its [protocol priorities](https://blog.ethereum.org/2026/09/07/protocol-priorities) on September 7. It targets quantum resistance across execution, consensus, and data by December 2029. A 2030 Q-day is an intentionally early planning assumption, not a settled prediction. Frames (EIP-8141) and FOCIL (EIP-7805), selected as Hegotá headliners, are not mainnet-shipped features.
 
-### Why it matters
-
 This is not an instruction to replace every cryptographic algorithm immediately. It is a reason to prepare account and transaction boundaries that can change. Execution-layer signature flexibility through native account abstraction and consensus-layer cryptographic migration are separate problems. A wallet supporting a new signature does not make the entire network quantum-resistant.
 
 ### Product / Engineering perspective
 
 **Wallet:** Avoid hard-wiring account policy, signature algorithm, serialization, and recovery into one implementation. Negotiate signature support as a per-chain capability. Account migrations should let users verify changes to addresses, permissions, and recovery mechanisms.
-
-**Chain / Infrastructure:** Do not assume SDKs, RPCs, simulation, and indexers adopt new transaction models simultaneously. Test validation failures, inclusion, gas payment, and nonce behavior on devnets, while keeping research, specification, and deployment status behind separate feature flags. A long-term target is not permission to enable a production path early.
 
 **Custody / Exchange:** Inventory cryptographic dependencies in signing devices, key management, and approval policies, then identify replaceable interfaces. The target year should start a budget for hardware, audit, and recovery changes—not a fear-based message demanding immediate asset transfers.
 
@@ -76,11 +68,11 @@ This is not an instruction to replace every cryptographic algorithm immediately.
 
 ## 4. Blockaid extends monitoring from contracts to external dependencies
 
+Blockaid is an onchain security platform that helps wallets, dApps, and institutions detect malicious transactions, phishing, and smart-contract anomalies. It provides risk checks before transaction signing and monitoring of assets and protocols already in operation. This announcement expands the latter scope.
+
 Blockaid announced [new Onchain Monitoring capabilities](https://blockaid.io/blog/onchain-monitoring-security-that-keeps-pace-with-the-onchain-economy) on September 9: Auto-Discovery for inventory updates, Dependency Mapping for external infrastructure, and an Ecosystem Incidents Feed. Signals include liquidity, oracles, ownership, roles, upgrades, and pauses. These are vendor-described capabilities, not independently verified detection or loss-prevention results.
 
-### Why it matters
-
-DeFi risk extends beyond deployed contracts. A vault's strategy or collateral can acquire exposure through an external protocol without its own contract changing. Audits and live monitoring examine different time horizons; one does not replace the other. Accurate dependency models and response authority matter before adding another dashboard.
+The practical significance is that safe code alone does not make a DeFi service safe to operate. A vault might allocate funds to another protocol that relies on an external price oracle; a failure in that protocol or a bad price can pass losses through to vault users. Dependencies change the risk even when the vault's own contract does not change. Tracking those connections helps teams avoid overlooking exposure and determine the scope of an incident response. Audits and live monitoring remain complementary, however. Teams must decide what to monitor and who can respond before adding a tool.
 
 ### Product / Engineering perspective
 
@@ -96,7 +88,7 @@ DeFi risk extends beyond deployed contracts. A vault's strategy or collateral ca
 
 U.S. Bank announced a [live USBDC pilot transaction](https://ir.usbank.com/news-events/news/news-details/2026/U-S--Bank-Launches-USBDC-Stablecoin/default.aspx) on September 9. Its dollar-backed stablecoin moved value between bank entities in North America and Europe on Stellar. The pilot connects core finance, risk, compliance, and operations while evaluating minting, payment redemption, freezing, and clawback. It does not establish a public retail launch or unrestricted DeFi availability.
 
-### Why it matters
+[Stellar](https://stellar.org/learn/intro-to-stellar) is a public blockchain used for payments, cross-border transfers, and digital asset issuance. It supports asset transfers and transaction records, alongside issuer controls such as asset authorization and freezing. Here, Stellar is the payment network, while USBDC is the asset U.S. Bank issues on it. Using a public network does not make USBDC's holding, transfer, or redemption terms open to everyone.
 
 An onchain transfer, bank-ledger posting, and fiat redemption are not the same completion state. Bank stablecoins bring issuer controls and ledger integration alongside potential speed improvements. The announcement does not settle reserve details, customer redemption rights, deposit-equivalent protection, or third-party transferability.
 
