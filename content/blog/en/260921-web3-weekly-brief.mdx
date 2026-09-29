@@ -1,0 +1,105 @@
+---
+title: "Web3 Weekly Brief 2026/09/21"
+description: "Product and engineering implications of MetaMask transaction protection, the U.S. tokenized-stock exemption, Solana Transaction V1, Aave App accounts, and bank stablecoin infrastructure"
+date: "2026-09-21"
+category: "crypto"
+subcategory: "web3-brief"
+tags: ["Web3", "Wallet Security", "Tokenized Stocks", "Solana", "DeFi", "Stablecoins"]
+published: true
+---
+
+Last week showed how quickly execution guarantees, account recovery, and compliance become core product architecture as onchain services move toward mainstream and regulated markets. A wallet began binding its preview to transaction execution. U.S. regulators opened a narrow route for tokenized stocks to trade through AMMs. Solana's new transaction format, Aave App's account model, and stablecoin infrastructure for banks all reinforce the same point: teams must expose failure conditions and control boundaries as deliberately as they add convenience.
+
+This brief covers announcements and changes from September 14–20, 2026, in Korea Standard Time.
+
+## 1. MetaMask binds transaction previews to execution outcomes
+
+MetaMask introduced [Added Protection](https://metamask.io/news/added-protection-prevents-red-pill-attacks) on September 17. The feature targets red pill attacks, in which a malicious contract behaves safely during simulation but takes a different path when the signed transaction executes. MetaMask simulates the transaction, attaches the expected outcome as an execution requirement, and reverts the transaction if the result changes. The user still pays the network fee for the failed attempt.
+
+The initial scope is specific: extension v13.45 on the 13 EVM networks that support EIP-7702 smart accounts, with mobile support to follow. Added Protection addresses contracts that manipulate the gap between simulation and execution. It does not cover every loss scenario, such as ordinary price movement, a mistaken recipient, or excessive permissions granted to an otherwise functioning contract.
+
+### Product / Engineering perspective
+
+**Wallet:** This moves simulation from an explanatory preview toward an enforceable precondition. Confirmation screens still need to identify supported chains and account types, explain uncovered risks, and include gas costs in failed-transaction messaging and estimates.
+
+**DeFi / dApp:** Contracts that intentionally diverge between simulation and execution—and integrations whose outcomes are merely unstable—may now fail in supported wallets. Run regression tests on representative flows and distinguish a security-policy rejection from an ordinary revert in user-facing errors.
+
+**Security / Platform:** Displaying a simulation as a trust signal and validating it during execution provide different guarantees. Security reviews should identify which state and asset changes are bound, and how the control treats values that may legitimately move, including oracle prices and slippage.
+
+---
+
+## 2. The SEC grants a temporary path for permissioned tokenized-stock AMMs
+
+On September 17, the U.S. Securities and Exchange Commission granted a [temporary, conditional Innovation Exemption](https://www.sec.gov/newsroom/press-releases/2026-90-sec-issues-innovation-exemption-facilitate-trading-tokenized-nms-stock-request-comment) to Tokenized Securities Venues (TSVs) trading tokenized National Market System stocks. A TSV operates AMM liquidity pools where permissioned participants trade those securities. Subject to the order's conditions, TSVs receive relief from the Exchange Act definition of an `exchange`, while certain liquidity providers receive relief from the `dealer` definition. The [underlying order](https://www.sec.gov/files/rules/exorders/2026/34-106402.pdf) expires after five years and requests public comment.
+
+The exemption does not turn tokenized stocks into unrestricted crypto tokens. A token must carry the same dividend, voting, and other rights as the corresponding stock. Symbol and volume caps apply. A TSV must halt when the underlying stock stops trading on its primary listing exchange. Smart contracts must be public and auditable on a public permissionless ledger, while issuers get an opportunity to object when an unaffiliated third party tokenizes their stock.
+
+### Product / Engineering perspective
+
+**Regulation / Compliance:** Product definitions must connect legal asset rights to token state. Participant eligibility, symbol and volume caps, issuer objections, coordinated halts, and recordkeeping should become policies enforced before and after execution—not a collection of manual operating notes.
+
+**DeFi / dApp:** A public chain and AMM do not make this a permissionless product. Access rights, market status, corporate actions, and parity between the stock and token belong in routing and UI logic. Pooling assets that share a ticker but not the same legal rights can conceal material differences in both claims and liquidity.
+
+**Custody / Exchange:** Holding the token alone does not deliver dividends, voting, or redemption. Operators need reconciliation across issuance, transfer-agent records, custody, and market-halt data, plus explicit controls for trading and withdrawals when onchain ownership and offchain records diverge.
+
+---
+
+## 3. Solana activates Transaction V1 alongside 250ms slots and lower rent
+
+The Solana Foundation's September 19 [weekly changelog](https://solana.com/news/solana-changelog-september-18-2026) reported mainnet feature gates for Transaction V1, rent of 5,080 lamports per byte of account data, and 250ms slots. Transaction V1 activated on September 15 and [raises the maximum transaction size from 1,232 to 4,096 bytes](https://solana.com/vi/upgrades/larger-transaction-sizes), creating room for ZK proofs, larger multisigs, and complex batches in one transaction.
+
+V1 is not a drop-in size increase. It removes address lookup tables and moves compute units, loaded account data, priority fees, and other resource controls into a message config. Readers must set `maxSupportedTransactionVersion: 1`. A V1 message with an empty config receives zero compute and loaded-data limits and fails before execution. Legacy and V0 remain valid, but an unprepared indexer, RPC service, wallet, or relayer can fail an entire block query or misread the transaction version and its resource settings.
+
+### Product / Engineering perspective
+
+**Chain / Infrastructure:** Validate V1 decoding, streaming, and resource fields across RPC and indexing paths. Larger payloads also increase validator network and memory pressure, so segment landing rates, priority fees, and retries by transaction size. Recalculate end-to-end latency budgets—including leader handoff and submission delays—after the slot reduction.
+
+**Wallet:** Advertise `1` through Wallet Standard's `supportedTransactionVersions` only after the wallet can parse, display, and sign V1. Confirmation screens must read compute, loaded-data, and priority-fee values from the V1 message config rather than ComputeBudget instructions.
+
+**DeFi / dApp:** Larger atomic routes and batches are available before universal wallet and RPC support. Negotiate V1 capability and preserve a Legacy or V0 fallback, but quote and handle it separately whenever the fallback changes atomicity or the number of usable accounts.
+
+---
+
+## 4. Aave App combines familiar recovery with a smart-account control plane
+
+Aave Labs published the [Aave App account architecture](https://aave.com/blog/how-aave-accounts-work) on September 15. Users sign up with an email address or phone number and a password, while an EOA signer generated on their device signs transactions. The private key is encrypted with the password and authentication credential, then stored by Aave's backend. Recovery options include the secure enclave on a previously authorized device and an opt-in biometric process operated with CoinCover.
+
+Execution uses Alchemy Modular Account v2 with custom ERC-6900 modules. The smart account supports gas sponsorship, batching, an additional signer for sensitive actions, and scoped third-party permissions. Users pre-authorize withdrawal destinations and must pass an email or phone OTP check to add another. Aave also receives limited permission to move stablecoins into a vault after a bank deposit settles, avoiding a second manual step when fiat settlement takes days.
+
+This model reduces direct seed-phrase handling without eliminating trust dependencies. Recovery can depend on a device secure enclave, Aave's backend, authentication channels, and—when selected—CoinCover's biometric verification. A product's self-custody description should be evaluated alongside the roles of its recovery provider and backend.
+
+### Product / Engineering perspective
+
+**Wallet:** Treat signer creation, encrypted backup, device replacement, credential loss, and withdrawal-destination changes as one account lifecycle. Users should be able to see who holds key material and recovery shares at each stage, not just whether onboarding completed.
+
+**DeFi / dApp:** Automatic deposits after settlement reduce idle time but add failure, duplication, and cancellation states between an asynchronous bank transfer and an onchain vault action. Scope delegated authority by asset, destination, amount, and expiry, then preserve a traceable funds state when automation fails.
+
+**Security / Platform:** Passwords, OTPs, passkeys, device recovery, and biometric recovery expose different attack surfaces. Model provider outages and credential compromise, and give withdrawal-address changes, extra signers, and third-party module permissions independent delays, alerts, and revocation paths.
+
+---
+
+## 5. Coinbase and Stablecore connect stablecoins to community-bank systems
+
+Coinbase and Stablecore announced a [partnership](https://www.coinbase.com/blog/coinbase-and-stablecore-bring-stablecoin-and-digital-asset-services-to-community-and-regional-banks-and-credit-unions) on September 16 to let U.S. community and regional banks and credit unions provide custody, trading, staking, and stablecoin payments through existing banking platforms. Stablecore connects core banking, digital banking, and compliance systems, while Coinbase supplies custody and exchange infrastructure. The companies say Stablecore's integrations reach more than 3,000 institutions and that work is underway with banks including Amarillo National Bank in Texas.
+
+That reach is not the same as 3,000 live deployments. Integration coverage and production adoption remain distinct. The announcement does not specify a stablecoin's reserve design, direct customer redemption rights, settlement finality, or deposit-insurance treatment. Tokenized deposits, stablecoins, and other digital assets also carry different liability structures and should not appear as one interchangeable balance.
+
+### Product / Engineering perspective
+
+**Stablecoin / Payments:** Model bank-ledger posting, onchain transfer, and fiat settlement as separate states. Transaction history should identify the mint, burn, and redemption actors; chain finality; cutoffs; reversals; and fees. Incident handling needs a defined source of truth when ledgers disagree.
+
+**Custody / Exchange:** The bank may retain the customer relationship while depending on external infrastructure for key custody and execution. Reflect omnibus versus segregated accounts, withdrawal approval, chain sunsets, and provider-outage exit plans in both contracts and operating runbooks.
+
+**Regulation / Compliance:** Connecting an existing compliance system involves more than passing through KYC results. Onchain address screening, transaction monitoring, sanctions updates, suspicious-activity review, and customer disclosures must be reproducible in bank records. Each institution still needs a separate check of launch jurisdictions and product-specific permissions.
+
+---
+
+## This week's priorities
+
+Start with transaction execution boundaries. EVM wallet and dApp teams should identify the chains and accounts covered by MetaMask Added Protection; Solana teams should verify every V1 read, sign, and stream path. A successful simulation or advertised capability is not proof of end-to-end execution compatibility.
+
+Move recovery and settlement states into the center of account and payment design. Aave App illustrates why offchain recovery providers and scoped module authority belong in the account lifecycle. Bank-connected stablecoin products must separately display onchain transfers, bank-ledger posting, and fiat redemption.
+
+The U.S. tokenized-stock exemption connects public ledgers and AMMs to regulated markets, but only with permissioned access, equivalent rights, symbol and volume limits, and coordinated halts. The common priority is to turn compliance rules into executable product state instead of treating tokenization as a contract-deployment exercise.
+
+> This brief is based on analysis generated with Codex each Monday. It is published only after the blog operator's direct review and approval.

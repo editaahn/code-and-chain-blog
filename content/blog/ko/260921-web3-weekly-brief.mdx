@@ -1,0 +1,105 @@
+---
+title: "Web3 Weekly Brief 2026/09/21"
+description: "MetaMask 거래 보호, 미국 tokenized stock 예외, Solana Transaction V1, Aave App 계정 구조, 은행용 stablecoin 인프라의 제품·엔지니어링 영향을 정리한 주간 브리핑"
+date: "2026-09-21"
+category: "crypto"
+subcategory: "web3-brief"
+tags: ["Web3", "Wallet Security", "Tokenized Stocks", "Solana", "DeFi", "Stablecoins"]
+published: true
+---
+
+지난주에는 온체인 제품이 대중 시장과 제도권 금융으로 넓어질수록 거래 실행, 계정 복구, 규제 준수의 경계도 제품 안으로 들어온다는 점이 선명해졌다. 지갑은 시뮬레이션 결과를 실제 실행 조건으로 묶기 시작했고, 미국 규제당국은 tokenized stock을 AMM에서 거래할 제한적 통로를 열었다. Solana의 새 transaction 형식, Aave App의 계정 구조, 은행 시스템에 붙는 stablecoin 인프라도 같은 흐름을 보여준다. 편의 기능을 더하는 일만큼 실패 조건과 통제 주체를 드러내는 일이 중요해졌다.
+
+이번 브리핑은 한국 시간 기준 2026년 9월 14일부터 20일까지의 발표와 변화를 다룬다.
+
+## 1. MetaMask: 거래 미리보기와 실제 실행 결과를 묶는 보호 기능
+
+MetaMask는 9월 17일 [Added Protection](https://metamask.io/news/added-protection-prevents-red-pill-attacks)을 공개했다. 악성 contract가 시뮬레이션 단계에서는 안전한 결과를 보여주고 실제 transaction에서 다른 동작을 하는 이른바 red pill attack을 막는 기능이다. 지갑이 서명 전에 예상 결과를 계산하고 그 결과를 transaction의 실행 조건으로 넣는다. 실제 결과가 달라지면 transaction은 되돌아가며, 사용자는 시도에 든 network fee만 부담한다.
+
+적용 범위는 아직 제한적이다. Added Protection은 extension v13.45에서 EIP-7702 smart account를 지원하는 13개 EVM 네트워크에 먼저 적용됐고 모바일은 추후 지원할 예정이다. 이 기능은 contract가 시뮬레이션을 속여 실행 결과를 바꾸는 공격을 겨냥한다. 가격 변동, 잘못 고른 수신자, 정상 contract의 과도한 권한 승인까지 모두 막는 보편적 안전장치는 아니다.
+
+### Product / Engineering 관점
+
+**Wallet:** transaction 시뮬레이션을 설명용 화면에 그치지 않고 실제 실행 전제와 연결하는 설계다. 다만 보호가 적용되는 체인·계정 유형과 적용되지 않는 위험을 확인 화면에서 구분해야 한다. 실패 때 gas가 소모된다는 점도 성공·실패 안내와 비용 추정에 반영해야 한다.
+
+**DeFi / dApp:** 지갑이 예상 token 이동량과 실제 결과의 일치를 요구하면 시뮬레이션과 실행 사이에 의도적으로 다른 경로를 타는 contract나 불안정한 연동이 실패할 수 있다. 지원 지갑에서 대표 거래를 회귀 테스트하고, 실패 원인을 일반적인 revert와 보안 차단으로 나눠 알려줘야 한다.
+
+**Security / Platform:** 시뮬레이션 결과를 신뢰 신호로만 보여주는 것과 실행 시 검증하는 것은 다른 보안 수준이다. 거래 보호를 평가할 때는 어떤 상태와 자산 변화가 고정되는지, oracle·slippage처럼 정상적으로 달라질 수 있는 값을 어떻게 처리하는지 확인해야 한다.
+
+---
+
+## 2. SEC: tokenized stock의 permissioned AMM 거래에 한시적 예외
+
+미국 증권거래위원회(SEC)는 9월 17일 tokenized National Market System stock을 거래하는 Tokenized Securities Venue(TSV)에 [임시·조건부 Innovation Exemption](https://www.sec.gov/newsroom/press-releases/2026-90-sec-issues-innovation-exemption-facilitate-trading-tokenized-nms-stock-request-comment)을 부여했다. TSV는 허가받은 참여자가 AMM liquidity pool에서 tokenized stock을 거래하도록 하는 운영 주체다. 이번 조치는 일정 조건을 지킨 TSV를 Exchange Act의 `exchange` 정의에서, 일부 유동성 공급자를 `dealer` 정의에서 한시적으로 제외한다. [명령 원문](https://www.sec.gov/files/rules/exorders/2026/34-106402.pdf)은 5년의 유효 기간과 함께 의견을 요청한다.
+
+예외가 tokenized stock을 일반 crypto token처럼 자유롭게 거래하도록 허용한 것은 아니다. 대상 자산은 기존 주식과 같은 배당·의결권을 제공해야 한다. 종목 수와 거래량에는 한도가 있고, 기초 주식이 거래 정지되면 TSV도 동시에 멈춰야 한다. smart contract는 감사할 수 있고 공개돼야 하며 public permissionless ledger에 배포돼야 한다. 제삼자가 발행사와 무관하게 tokenization한 주식은 발행사가 이의를 제기할 기회도 가져야 한다.
+
+### Product / Engineering 관점
+
+**Regulation / Compliance:** 법적 자산 권리와 token contract의 상태를 같은 상품 정의 안에서 추적해야 한다. 참여자 허가, 종목·거래량 한도, 발행사 이의, 거래 정지, 기록 보존을 개별 운영 절차가 아니라 실행 전후에 검증되는 정책으로 설계해야 한다.
+
+**DeFi / dApp:** public chain과 AMM을 쓴다고 permissionless 제품이 되는 것은 아니다. 접근 자격, 시장 시간과 정지 상태, corporate action, 기초 주식과 token의 권리 일치를 UI와 거래 경로에서 처리해야 한다. 기존 DEX pool에 종목 코드가 같은 자산을 섞는 설계는 법적 권리와 유동성의 차이를 숨길 수 있다.
+
+**Custody / Exchange:** token 보관만으로 배당·의결권·상환을 완결할 수 없다. 발행·transfer agent·custody·시장 정지 데이터를 서로 맞추고, offchain 기록과 onchain 소유권이 어긋났을 때 거래와 출금을 어떻게 제한할지 정해야 한다.
+
+---
+
+## 3. Solana: Transaction V1과 250ms slot·rent 인하가 mainnet에 도착
+
+Solana Foundation은 9월 19일 공개한 [주간 changelog](https://solana.com/news/solana-changelog-september-18-2026)에서 Transaction V1, 계정 data 1 byte당 rent 5,080 lamports, 250ms slot time 관련 feature gate가 mainnet에 적용됐다고 밝혔다. 그중 Transaction V1은 9월 15일 활성화됐으며, [transaction 크기를 1,232 bytes에서 4,096 bytes로 늘린다](https://solana.com/vi/upgrades/larger-transaction-sizes). ZK proof, 큰 multisig, 복잡한 batch를 한 transaction에 담을 여지가 커졌다.
+
+크기 증가만 보고 기존 transaction을 그대로 바꾸면 안 된다. V1은 address lookup table을 지원하지 않고 compute unit·loaded account data·priority fee 같은 resource 설정을 message config에 둔다. 읽는 쪽은 `maxSupportedTransactionVersion: 1`을 지정해야 하며, V1 config를 비워 보내면 compute와 loaded data 한도가 0으로 잡혀 실행 전에 실패한다. Legacy와 V0는 계속 작동하지만, indexer·RPC·wallet·relayer가 V1을 모르면 block 조회 전체가 실패하거나 transaction version과 resource 설정을 잘못 해석할 수 있다.
+
+### Product / Engineering 관점
+
+**Chain / Infrastructure:** RPC와 indexer는 V1 parsing·streaming·resource field 처리를 먼저 검증해야 한다. 큰 transaction은 validator의 network와 memory 부담도 키우므로 크기별 landing rate·priority fee·재전송 지표를 나눠 관찰해야 한다. slot 단축 뒤에는 leader 전환과 제출 지연을 포함한 end-to-end latency budget을 다시 재야 한다.
+
+**Wallet:** 실제로 parse·display·sign할 수 있을 때만 Wallet Standard의 `supportedTransactionVersions`에 `1`을 광고해야 한다. 확인 화면은 instruction 속 ComputeBudget가 아니라 V1 message config에서 compute·loaded data·priority fee를 읽어야 한다.
+
+**DeFi / dApp:** 큰 atomic route와 batch가 가능해졌지만 모든 사용자 지갑과 RPC가 곧바로 지원하는 것은 아니다. V1 capability를 협상하고 Legacy·V0 fallback을 유지하되, fallback이 atomicity나 account 수를 바꾸는 경우에는 별도 견적과 실패 처리가 필요하다.
+
+---
+
+## 4. Aave App: 익숙한 로그인과 복구를 smart account에 결합
+
+Aave Labs는 9월 15일 [Aave App 계정 구조](https://aave.com/blog/how-aave-accounts-work)를 공개했다. 사용자는 이메일 또는 전화번호와 password로 가입하지만, 기기에서 생성한 EOA signer가 거래를 서명한다. private key는 password와 인증 정보로 암호화돼 Aave backend에 저장된다. 기존 기기의 secure enclave를 이용한 device recovery와 CoinCover의 face scan을 이용한 선택형 biometric recovery도 제공한다.
+
+계정 실행에는 Alchemy Modular Account v2와 custom ERC-6900 module을 쓴다. smart account는 gas sponsor, transaction batch, 민감한 행동의 추가 signer, 제한된 제삼자 권한을 지원한다. Aave App은 사용자가 미리 정한 출금 주소를 두고 새 주소 추가 때 email·phone OTP를 요구한다. 은행 입금이 며칠 뒤 정산돼도 다시 앱을 열지 않고 수익 상품으로 옮길 수 있도록, Aave에 stablecoin 이동의 제한된 권한도 준다.
+
+이 구조는 seed phrase를 직접 관리하는 부담을 줄이지만 신뢰가 사라진 것은 아니다. 복구는 기기 secure enclave, Aave backend, 인증 채널, 선택한 경우 CoinCover의 biometric verification에 의존한다. self-custody라는 제품 설명과 recovery provider·backend가 맡는 역할을 함께 봐야 한다.
+
+### Product / Engineering 관점
+
+**Wallet:** 가입 성공률만 보지 말고 signer 생성, 암호화된 backup, 기기 교체, 인증 정보 분실, 출금 주소 변경을 하나의 계정 생애주기로 시험해야 한다. 사용자는 어떤 단계에서 누가 key 자료와 복구 조각을 보관하는지 확인할 수 있어야 한다.
+
+**DeFi / dApp:** 정산 뒤 자동 예치는 유휴 시간을 줄이지만, 비동기 은행 입금과 onchain vault 이동 사이의 실패·중복·취소 상태를 늘린다. 제한된 권한의 자산·목적지·금액·만료 조건을 명시하고, 자동화가 실패해도 사용자가 자금 상태를 추적할 수 있게 해야 한다.
+
+**Security / Platform:** password, OTP, passkey, 기기 복구, 생체정보 복구는 서로 다른 공격면을 가진다. 복구 사업자 장애와 인증 정보 탈취를 포함한 threat model을 만들고, 출금 주소 변경·추가 signer·제삼자 module 권한에는 독립된 지연·알림·철회 경로를 둬야 한다.
+
+---
+
+## 5. Coinbase와 Stablecore: 지역 은행 시스템 안에 stablecoin 기능을 연결
+
+Coinbase와 Stablecore는 9월 16일 미국 지역 은행과 신용협동조합이 기존 banking platform에서 custody, 거래, staking, stablecoin payment를 제공하도록 하는 [협력](https://www.coinbase.com/blog/coinbase-and-stablecore-bring-stablecoin-and-digital-asset-services-to-community-and-regional-banks-and-credit-unions)을 발표했다. Stablecore가 core banking·digital banking·compliance system을 연결하고, Coinbase가 custody와 exchange infrastructure를 제공한다. 양사는 Stablecore의 연동 범위가 3,000곳이 넘는 은행·신용협동조합에 닿으며 Texas의 Amarillo National Bank를 포함한 기관에서 작업이 진행 중이라고 밝혔다.
+
+이는 3,000곳이 이미 서비스를 출시했다는 뜻이 아니다. integration reach와 실제 production adoption은 구분해야 한다. 발표에는 특정 stablecoin의 준비금, 고객의 직접 상환 권리, settlement finality, 예금보험 적용 여부가 담기지 않았다. tokenized deposit, stablecoin, 일반 digital asset도 같은 부채 구조가 아니므로 하나의 잔액처럼 설명해서는 안 된다.
+
+### Product / Engineering 관점
+
+**Stablecoin / Payments:** 은행 원장, onchain transfer, 법정화폐 정산을 서로 다른 상태로 모델링해야 한다. mint·burn·redemption 주체, chain finality, 결제 마감, 취소·환입, 수수료를 거래 이력에 따로 표시하고 실패 때 어느 원장이 기준인지 정해야 한다.
+
+**Custody / Exchange:** 은행이 고객 관계를 유지해도 key custody와 거래 실행은 외부 인프라에 의존한다. omnibus·분리 계정 구조, 출금 승인, 체인 지원 종료, 공급자 장애 때의 exit plan을 계약과 운영 runbook에 함께 반영해야 한다.
+
+**Regulation / Compliance:** 기존 core banking과 준법감시 시스템의 연동은 KYC 결과만 넘기는 작업이 아니다. onchain 주소 screening, 거래 감시, 제재 목록 갱신, 의심 거래 검토와 고객 고지를 은행 기록에 재현할 수 있어야 한다. 각 기관의 실제 출시 관할권과 상품별 허가 범위도 별도로 확인해야 한다.
+
+---
+
+## 이번 주 우선순위
+
+가장 먼저 transaction 실행 경계를 확인한다. EVM wallet·dApp은 MetaMask Added Protection이 적용되는 체인과 계정을 식별하고, Solana 팀은 V1 read·sign·stream 경로를 점검한다. 시뮬레이션 성공이나 capability 광고만으로 실제 실행 호환성을 가정해서는 안 된다.
+
+계정과 결제 제품은 복구와 정산 상태를 설계 문서의 주변부에 두지 않는다. Aave App 사례처럼 offchain 복구 사업자와 제한된 module 권한을 계정 생애주기에 넣고, 은행 연동 stablecoin은 onchain transfer와 은행 원장 반영·법정화폐 상환을 분리해 보여줘야 한다.
+
+미국 tokenized stock 예외는 public chain과 AMM을 제도권 시장에 연결했지만 permissioned access, 권리 동일성, 종목·거래량 제한, 동시 거래 정지를 전제로 한다. tokenization을 단순한 contract 배포로 다루지 말고 준법 규칙을 실행 가능한 제품 상태로 옮기는 일이 이번 주의 공통 과제다.
+
+> 브리핑은 매주 월요일 Codex로 생성된 분석 자료를 기반으로 작성된다. 게재 전 블로그 운영자의 직접 검수 및 승인을 거친다.
