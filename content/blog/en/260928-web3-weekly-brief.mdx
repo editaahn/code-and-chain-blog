@@ -1,0 +1,115 @@
+---
+title: "Web3 Weekly Brief 2026/09/28"
+description: "Product and engineering implications of US stablecoin rules, scoped recurring payments, shielded Zcash signing, MiCA review priorities, and tokenized-deposit infrastructure"
+date: "2026-09-28"
+category: "crypto"
+subcategory: "web3-brief"
+tags: ["Web3", "Stablecoins", "Wallet Infrastructure", "Zcash", "MiCA", "Tokenized Deposits"]
+published: true
+---
+
+Last week turned several abstract debates about digital money into concrete rules and permission models. The US proposed reserve, capital, and approval requirements for federally supervised stablecoin issuers. The European Banking Authority (EBA) asked MiCA reviewers to address multi-issuer stablecoins and crypto lending more directly. On the product side, scoped wallet permissions enabled subscriptions without a fresh signature for every charge, while native hardware signing reached shielded Zcash. Tokenized deposits also moved beyond isolated pilots toward integration with existing bank messaging and payment networks.
+
+This brief covers announcements and developments from September 21–27, 2026, in Korea Standard Time.
+
+## 1. The Federal Reserve proposes GENIUS Act rules for stablecoin issuers
+
+On September 24, the Federal Reserve Board opened comment on [two proposals implementing the GENIUS Act](https://www.federalreserve.gov/newsevents/pressreleases/bcreg20260924a.htm). The first would require Board-supervised payment stablecoin issuers to back all outstanding tokens with permitted high-quality liquid assets, including short-term Treasury bills. It also introduces standardized capital requirements for credit and operational risk, risk-management standards, obligations for Board-supervised reserve custodians, and clarification of permissible stablecoin activities for banks.
+
+The second proposal creates a tailored application process for a Board-supervised state member bank that wants a subsidiary to issue payment stablecoins. An applicant would submit a business plan and financial information, with proposed procedures for appeals, hearings, and final decisions. Neither proposal is final. The comment period runs for 60 days after publication in the Federal Register.
+
+Matching reserve book value to tokens outstanding is not enough if an issuer cannot deliver par redemption during stress. Federal Reserve Governor Michael Barr separately called for [clear universal redemption rights and closer attention to interest-rate and foreign-exchange risk](https://www.federalreserve.gov/newsevents/pressreleases/barr-statement-20260924.htm). That puts issuance, redemption, reserve management, and custody on distinct operational boundaries.
+
+### Product / Engineering perspective
+
+**Stablecoin / Payments:** Issuers need near-real-time reconciliation between mint-and-burn records and reserve ledgers, plus liquidity tests for ordinary and concentrated redemption. Reserve disclosures should explain composition, valuation time, maturity, custodians, and any difference from circulating supply. Payment products must not collapse an onchain transfer and completed fiat redemption into one status.
+
+**Regulation / Compliance:** Because these are proposals, launch plans and product copy must not assume approval. Controls and application materials will depend on the issuing entity, reserve custodian, and whether the business follows a bank-subsidiary or nonbank path. Teams should track comments and changes to the final rule as versioned requirements.
+
+**Custody / Exchange:** Custody of reserve assets and custody of customer stablecoins have different asset-segregation, ledger, and insolvency boundaries. Exchanges and custodians should represent the issuer, reserve custodian, token contract, and redemption counterparty separately instead of presenting them as one brand-level dependency.
+
+---
+
+## 2. Polygon OMS adds recurring stablecoin payments with one approval
+
+Polygon Labs introduced [recurring stablecoin payment rules](https://polygon.technology/blog/stablecoin-subscriptions) in Open Money Stack (OMS) on September 21. A user approves a maximum charge, allowed contracts and actions, billing period, and expiry. When a service backend later requests payment, the wallet's onchain Sessions Module checks the request against those terms and rejects out-of-scope calls at the contract level. The user can revoke future payments.
+
+The experience resembles a stored-card subscription, but the authorization model differs. A merchant does not hold the payment instrument, and a server does not receive general wallet access. Instead, a remote backend operates through a bounded session. Polygon's [Smart Sessions documentation](https://docs.polygon.technology/wallets/smart-sessions) says sessions are time-limited and revocable, and operate within approved native-token or ERC-20 transfer grants. The session key remains inside an enclave, and the backend cannot widen its own permissions.
+
+Removing a signature from every billing cycle does not make the flow trustless. Wallet-as-a-Service (WaaS) manages session signers and configuration updates, so enclave and backend availability still affect payment execution. Revocation immediately stops WaaS from using a session, while removal of its onchain configuration entry occurs during a subsequent wallet execution. Products need to distinguish the revocation state a user sees from the state recorded onchain.
+
+### Product / Engineering perspective
+
+**Wallet:** Approval screens should render the recipient, token, per-charge ceiling, cadence, expiry, and allowed methods in plain language. Keep an in-wallet list of recurring permissions with an immediate revocation path, and require fresh consent when scope changes. Define what happens to sessions after device loss, account recovery, and credential rotation.
+
+**Stablecoin / Payments:** Model idempotency, retry policy, insufficient balance, mismatches between token allowance and session grants, and races around cancellation as separate states. Do not treat a backend response as final payment; reconcile onchain execution with the service ledger.
+
+**Security / Platform:** An enclave-held key does not complete the threat model. Review credential registration, user approval, backend authentication, rotation, revocation propagation, and anomalous-charge detection as one lifecycle. Test that contract and method allowlists, amount caps, and time windows are enforced onchain rather than only in server configuration.
+
+---
+
+## 3. Ledger Wallet brings shielded Zcash into the hardware-signer flow
+
+Ledger announced [native shielded Zcash support in Ledger Wallet Desktop](https://www.ledger.com/blog-native-shielded-zcash-support) on September 23. Managing shielded ZEC with a Ledger device previously required a separate companion wallet. Users can now add, send, and receive shielded balances in the desktop application. The integration supports Ironwood, the shielded pool activated in July 2026; mobile support is not yet available.
+
+The host computer performs transaction computation while spending keys remain on the Ledger signer. The device parses the transaction, displays it for approval, and produces the final signature. Ledger says the work included new cryptographic-curve support, on-device transaction parsing, and security audits. Users can also grant read-only transaction-history access to a tax adviser or compliance officer without granting spending authority.
+
+Bringing privacy into the primary wallet changes more than a feature checklist. A public explorer cannot reveal the recipient and amount of a shielded transfer, which makes wallet history, backups, and audit exports more important evidence. Conversely, an overbroad viewing capability can reveal an entire history that remains private onchain.
+
+### Product / Engineering perspective
+
+**Wallet:** Distinguish transparent balances, shielded balances, pool migrations, and the lack of mobile support. If transaction parsing fails or the device cannot display a field, stop instead of falling back to blind signing. Recovery drills should prove that backups restore shielded notes and viewing capabilities, not just addresses.
+
+**Security / Platform:** Put the host-proving versus signer-approval boundary into the threat model and audit scope. Verify that the amount and recipient displayed on-device are cryptographically bound to the signed payload so a malicious host cannot substitute another transfer. Treat read-only export as a separate permission with the smallest practical scope, expiry, and revocation.
+
+**Regulation / Compliance:** Treatment of shielded assets varies by jurisdiction. A regulated service should define record-retention and lawful-disclosure workflows before enabling support, and must not market privacy as guaranteed anonymity or a way around compliance.
+
+---
+
+## 4. The EBA asks MiCA reviewers to prioritize multi-issuer stablecoins and DeFi lending
+
+On September 24, the EBA published its [formal response to the European Commission's MiCA review consultation](https://www.eba.europa.eu/publications-and-media/press-releases/eba-identifies-priorities-review-mica). It found the current framework for asset-referenced token (ART) and e-money token (EMT) issuers broadly appropriate, but recommended stronger treatment of third-country multi-issuer stablecoin arrangements. It also proposed revisiting minimum bank-deposit allocations within issuer reserves while preserving effective risk management.
+
+In a multi-issuer structure, one token brand may be issued by different legal entities or in different jurisdictions. The assets can look interchangeable in a product while carrying different issuers, reserve pools, redemption claims, and loss-bearing entities. The EBA also said ambiguity in crypto-asset classification creates avoidable cost and launch delays, and called for clearer MiCA definitions and scope.
+
+The response further asks the Commission to consider regulating crypto-asset lending, including cases in which a crypto-asset service provider facilitates access to decentralized lending protocols. As of September 1, 39 EMTs had been issued under MiCA and no ART had been authorized. This is a supervisory recommendation to the Commission's review—not an amended law or an immediately applicable rule.
+
+### Product / Engineering perspective
+
+**Stablecoin / Payments:** Do not infer asset identity from a ticker and token contract alone. Asset metadata and operating ledgers should identify the issuing entity, reserve allocation, redemption venue, and chain-specific mint-and-burn responsibility. If several issuers share liquidity or promise interchangeability, test how one issuer's halt propagates across pools.
+
+**DeFi / Protocol:** CASP-mediated access to DeFi lending may receive explicit regulation. Legal and product teams should jointly assess whether frontend control, routing and recommendation logic, fee collection, risk disclosures, and suitability checks amount to neutral software or intermediation.
+
+**Regulation / Compliance:** Do not defer classification among EMTs, ARTs, financial instruments, and tokenized deposits to a final pre-launch review. Keep the rationale and jurisdiction-specific feature set in a versioned decision record, then connect classification changes to product flags that can alter listing, marketing, redemption, and reporting behavior.
+
+---
+
+## 5. Tokenized deposits connect to Swift and US bank payment rails
+
+Two September 24 announcements showed tokenized deposits moving from isolated blockchain pilots into existing bank operations. IBM launched a beta [Digital Asset Haven connection to Swift's shared ledger](https://newsroom.ibm.com/2026-09-24-ibm-expands-its-digital-banking-infrastructure-with-swift-integration-and-digital-asset-haven-on-prem). Its ISO 20022 Messaging Adapter lets institutions instruct tokenized-deposit transactions using established message formats and compliance processes. Swift lists [17 banks in the initial live-transaction cohort](https://www.swift.com/payments/payment-innovation/blockchain-based-ledger).
+
+IBM also introduced an on-premises Digital Asset Haven beta for IBM Z and LinuxONE. Institutions can keep the solution and key-management layers in their own data centers, using Crypto Express HSMs and confidential computing to separate environments. IBM says SaaS, hybrid, and on-premises deployments use the same APIs and workflows, targeting portability without an application rewrite.
+
+The same day, The Clearing House selected Quant to provide technology for its [On-Chain Money Initiative](https://www.theclearinghouse.org/payment-systems/Articles/2026/09/The-Clearing-House-Partners-with-Quant-to-Advance-the--On-Chain-Money-Initiative), a US bank network for clearing and settling tokenized deposits. Quant will supply interoperability, orchestration, and transaction management while connecting existing RTP and CHIPS rails. Availability to participating institutions is targeted for the first half of 2027.
+
+Neither announcement is a public stablecoin launch. A tokenized deposit represents a bank deposit and remains inside the bank's access, ledger, and compliance perimeter. IBM's description also says tokenized assets can move around the clock ahead of final settlement through existing systems. An onchain record, a bank-ledger posting, and final fiat settlement remain distinct states.
+
+### Product / Engineering perspective
+
+**Chain / Infrastructure:** Correlate the ISO 20022 message, shared-ledger transaction, bank-ledger posting, and final-settlement ID in one trace. Each stage has different retry and reversal semantics, so systems should not assume end-to-end exactly-once execution; reconciliation must handle duplicates, delay, and partial success.
+
+**Stablecoin / Payments:** Do not merge stablecoins and tokenized deposits into one generic "digital dollar" balance. Products need to distinguish issuer, holding eligibility, operating hours, redemption, deposit protection, and whether final settlement occurs offchain. Round-the-clock token movement does not automatically provide round-the-clock fiat liquidity.
+
+**Custody / Exchange:** Cloud, hybrid, and on-premises choices change responsibility for patching, HSM ceremonies, disaster recovery, and audit evidence—not just key location. Identical APIs do not imply identical operating controls; maintain a responsibility matrix and recovery objectives for each deployment model.
+
+---
+
+## This week's priorities
+
+Start by separating stablecoins and tokenized deposits at the ledger level. Systems need explicit issuer, reserve or deposit liability, redemption counterparty, and final-settlement status. That foundation lets one control model address the Fed proposal, the EBA's multi-issuer concern, and bank shared-ledger integrations without pretending the assets are equivalent.
+
+Wallet and payment teams should treat recurring payments as bounded delegation, not merely convenience. Exercise approval scope, revocation, credential rotation, duplicate charges, and failure recovery. For shielded Zcash, verify the boundary between host computation and signer approval, the device display, and exposure created by viewing permissions.
+
+The regulatory and infrastructure announcements are not completed rollouts. The Fed documents are proposals, the EBA document is input to a MiCA review, and The Clearing House targets the first half of 2027. The immediate task is to version changing requirements and reconcile onchain execution with traditional financial ledgers—not market planned capabilities as already shipped.
+
+> This brief is based on analysis generated with Codex each Monday. It is published only after the blog operator's direct review and approval.

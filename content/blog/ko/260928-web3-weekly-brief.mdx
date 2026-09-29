@@ -1,0 +1,115 @@
+---
+title: "Web3 Weekly Brief 2026/09/28"
+description: "미국 stablecoin 규칙안, 제한형 반복결제 권한, shielded Zcash 하드웨어 서명, MiCA 재검토, 토큰화 예금 인프라의 제품·엔지니어링 영향을 정리한 주간 브리핑"
+date: "2026-09-28"
+category: "crypto"
+subcategory: "web3-brief"
+tags: ["Web3", "Stablecoins", "Wallet Infrastructure", "Zcash", "MiCA", "Tokenized Deposits"]
+published: true
+---
+
+지난주에는 디지털 자산을 기존 금융과 일상 결제에 연결하는 규칙과 권한 구조가 구체화됐다. 미국은 은행 감독을 받는 stablecoin 발행사의 준비자산·자본·인가 절차를 제안했고, 유럽은행감독청(EBA)은 MiCA가 다중 발행 stablecoin과 암호자산 대출을 더 분명하게 다뤄야 한다고 권고했다. 제품 쪽에서는 매번 서명하지 않아도 반복 결제를 처리할 수 있는 제한형 지갑 권한과 shielded Zcash의 하드웨어 서명이 나왔다. 은행권의 토큰화 예금(tokenized deposit)도 독립된 실험을 넘어 기존 메시징·결제망에 연결되는 단계로 이동했다.
+
+이번 브리핑은 한국 시간 기준 2026년 9월 21일부터 27일까지의 발표와 변화를 다룬다.
+
+## 1. 미국 연준: GENIUS Act 아래 stablecoin 발행 규칙안 공개
+
+미국 연방준비제도이사회는 9월 24일 GENIUS Act를 이행하기 위한 [두 가지 규칙안을 공개하고 의견 수렴을 시작했다](https://www.federalreserve.gov/newsevents/pressreleases/bcreg20260924a.htm). 첫 번째 안은 연준 감독을 받는 결제용 stablecoin 발행사가 유통액 전부를 단기 국채 등 허용된 고유동성 자산으로 뒷받침하도록 하고, 신용·운영 위험을 반영한 표준 자본 요건과 위험 관리 기준을 둔다. 준비자산을 보관하는 연준 감독 기관의 의무와 은행이 수행할 수 있는 stablecoin 관련 활동도 함께 다룬다.
+
+두 번째 안은 연준 감독을 받는 주법은행이 자회사를 통해 결제용 stablecoin을 발행할 때 적용할 별도 신청 절차를 만든다. 신청서에는 사업 계획과 재무 정보 등이 들어가며, 결정에 대한 이의 제기와 심리 절차도 제안됐다. 두 안 모두 최종 규칙이 아니다. 의견 수렴은 Federal Register 게재 뒤 60일 동안 진행된다.
+
+준비자산의 장부가치가 유통액과 맞는지만 확인해서는 충분하지 않다. 스트레스 상황에서도 액면가로 신속히 상환할 수 있어야 한다. Michael Barr 연준 이사도 [금리·외환 위험과 보편적인 상환권을 최종 규칙에서 더 분명히 해야 한다](https://www.federalreserve.gov/newsevents/pressreleases/barr-statement-20260924.htm)고 밝혔다. 발행·상환·준비금 관리·수탁을 서로 다른 운영 경계로 설계해야 한다는 뜻이다.
+
+### Product / Engineering 관점
+
+**Stablecoin / Payments:** 발행사는 발행·소각 기록과 준비자산 원장을 실시간에 가깝게 대사하고, 평상시와 대량 상환 상황을 나눠 유동성 계획을 시험해야 한다. 준비금 증명 화면은 자산 구성뿐 아니라 평가 시점, 만기, 보관 기관, 유통량과의 차이를 설명해야 한다. 결제 제품은 온체인 전송 완료와 법정화폐 상환 완료를 같은 상태로 표시해서는 안 된다.
+
+**Regulation / Compliance:** 아직 제안 단계이므로 제품 문구와 시장 진입 계획에서 인가 취득을 기정사실로 다루지 않는다. 어느 법인이 발행하고 어느 기관이 준비자산을 보관하는지, 은행 자회사 신청과 비은행 발행 경로 가운데 무엇을 택하는지에 따라 통제와 제출 자료가 달라진다. 규칙안의 의견 수렴과 최종안 변경을 요구사항 관리에 반영해야 한다.
+
+**Custody / Exchange:** 준비자산 수탁과 고객 stablecoin 수탁은 자산·원장·파산 격리 기준이 다르다. 거래소와 수탁사는 발행사, 준비자산 수탁기관, token contract, 상환 상대방을 하나의 이름으로 뭉뚱그리지 말고 장애와 상환 책임을 각각 표시해야 한다.
+
+---
+
+## 2. Polygon OMS: 한 번의 승인으로 반복 stablecoin 결제
+
+Polygon Labs는 9월 21일 Open Money Stack(OMS)에 [반복 stablecoin 결제 규칙](https://polygon.technology/blog/stablecoin-subscriptions)을 추가했다. 사용자는 결제 금액 상한, 호출을 허용할 contract와 기능, 결제 주기, 만료 시점을 한 번 승인한다. 이후 서비스 서버가 결제를 요청하면 지갑의 온체인 Sessions Module이 승인 범위와 맞는지 확인하고, 범위를 벗어난 요청은 contract 단계에서 거부한다. 사용자는 향후 결제를 취소할 수 있다.
+
+카드 정기결제와 비슷한 경험을 만들지만 권한 구조는 다르다. 판매자가 결제 수단을 보관하거나 서버가 지갑 전체 권한을 갖는 대신, 원격 서버가 제한된 session으로 특정 전송만 요청한다. [Smart Sessions 문서](https://docs.polygon.technology/wallets/smart-sessions)에 따르면 session은 시간 제한과 취소 기능을 갖고 native token 또는 ERC-20 전송 권한 안에서 작동한다. session key는 보안 영역(enclave) 밖으로 나오지 않으며, 서버는 스스로 승인 범위를 넓힐 수 없다.
+
+이 구조가 매번 서명하는 마찰을 줄인다고 해서 무신뢰 결제가 되는 것은 아니다. Wallet-as-a-Service(WaaS)는 session signer와 설정 갱신을 관리하고, 보안 영역과 서버의 가용성이 결제 성공에 영향을 준다. 취소 요청은 WaaS가 해당 session을 즉시 사용하지 못하게 하지만, 온체인 설정 항목은 다음 지갑 실행 때 제거된다. 제품은 사용자가 보는 취소 상태와 체인에 반영된 상태를 구분해야 한다.
+
+### Product / Engineering 관점
+
+**Wallet:** 승인 화면에 수신자, token, 회당 상한, 주기, 만료, 허용 기능을 사람이 읽을 수 있게 표시한다. 반복결제 목록과 즉시 취소 경로를 지갑 안에 두고, 승인 범위가 바뀌면 기존 동의를 재사용하지 않는다. 기기 분실·계정 복구·session credential 교체 때 남은 권한이 어떻게 처리되는지도 설계해야 한다.
+
+**Stablecoin / Payments:** 중복 청구를 막는 idempotency key, 청구 실패 재시도, 잔액 부족, token allowance와 session 권한의 불일치, 취소 직전의 경합을 별도 상태로 다룬다. 결제 성공을 서버 응답 하나로 확정하지 말고 온체인 실행과 서비스 원장의 반영을 함께 확인해야 한다.
+
+**Security / Platform:** session key가 보안 영역에 있다는 설명만으로 위험 검토를 끝내지 않는다. credential 등록, 사용자 승인, 서버 인증, key rotation, 취소 전파, 비정상 청구 탐지까지 전 과정을 위협 모델에 넣는다. 특히 contract와 호출 기능의 허용 목록, 금액·시간 제한을 서버 설정뿐 아니라 온체인에서도 검증하는지 시험한다.
+
+---
+
+## 3. Ledger Wallet: shielded Zcash를 하드웨어 서명 기기에서 직접 관리
+
+Ledger는 9월 23일 [Ledger Wallet Desktop의 기본 shielded Zcash 지원](https://www.ledger.com/blog-native-shielded-zcash-support)을 공개했다. 이전에는 Ledger 기기로 shielded ZEC를 관리하려면 별도 보조 지갑을 연결해야 했지만, 이제 Desktop 앱 안에서 shielded 잔액을 추가하고 보내고 받을 수 있다. 지원 대상은 2026년 7월 활성화된 Ironwood shielded pool이며 모바일에서는 아직 이용할 수 없다.
+
+거래 계산은 컴퓨터가 맡고, spending key는 Ledger signer에 남는다. 기기는 거래 내용을 해석해 사용자에게 보여주고 최종 서명을 수행한다. Ledger는 새 암호 곡선 지원, 기기 안의 거래 해석, 보안 감사를 통합했다고 설명했다. 사용자는 세무나 규정 준수 담당자에게 지출 권한 없이 거래 이력을 읽을 수 있는 view-only 접근을 줄 수도 있다.
+
+프라이버시 기능을 지갑 본체에 넣는 일은 단순한 기능 추가에 그치지 않는다. Shielded 거래는 공개 explorer만으로 수신자와 금액을 확인하기 어렵기 때문에, 지갑의 거래 내역·백업·감사 자료가 더 중요한 증거가 된다. 반대로 viewing 권한을 과도하게 공유하면 온체인에 드러나지 않던 전체 이력이 노출될 수 있다.
+
+### Product / Engineering 관점
+
+**Wallet:** 공개 잔액과 shielded 잔액, pool 이동, 모바일 미지원 상태를 구분해 보여준다. 거래 해석에 실패하거나 기기가 표시할 수 없는 필드가 있을 때는 blind signing으로 우회하지 않고 중단해야 한다. 백업과 복구 과정이 shielded note와 viewing key까지 보존하는지도 실제 복원 시험으로 확인한다.
+
+**Security / Platform:** proof 생성은 host, key 보관과 승인은 signer가 맡는 경계를 위협 모델과 감사 범위에 반영한다. 악성 host가 다른 거래를 제시하지 못하도록 기기 화면에 표시되는 금액·수신 정보와 서명 payload의 결합을 검증한다. view-only 자료 공유는 최소 범위·만료·철회가 가능한 별도 권한으로 다룬다.
+
+**Regulation / Compliance:** shielded 자산의 취급은 관할권마다 다를 수 있다. 규제 대상 서비스가 이를 지원한다면 거래 내역 보존과 합법적인 정보 제공 절차를 먼저 정하고, 프라이버시 기능을 익명성 보장이나 규제 회피 수단으로 홍보하지 않는다.
+
+---
+
+## 4. EBA: MiCA 재검토에서 다중 발행 stablecoin과 DeFi lending을 우선 과제로 제시
+
+EBA는 9월 24일 유럽연합 집행위원회의 MiCA 재검토 협의에 대한 [공식 의견](https://www.eba.europa.eu/publications-and-media/press-releases/eba-identifies-priorities-review-mica)을 냈다. 현행 자산준거토큰(ART)과 전자화폐토큰(EMT) 발행사 규칙은 대체로 적절하다고 평가했지만, 제3국의 다중 발행 stablecoin 구조는 위험이 크다며 규제 보강을 권고했다. 발행사가 준비자산 가운데 예금으로 보유해야 하는 최소 비율도 효과적인 위험 관리를 유지하는 범위에서 재검토할 것을 제안했다.
+
+다중 발행 구조에서는 같은 브랜드의 token을 여러 법인이나 관할권에서 발행할 수 있다. 사용자 화면에는 같은 자산처럼 보여도 법적 발행인, 준비금 pool, 상환 청구권, 손실 부담 주체가 다를 수 있다. EBA는 암호자산 분류의 모호함이 제품 출시 비용과 지연을 만든다고 보고 MiCA의 범위와 정의도 명확히 하라고 권고했다.
+
+또한 암호자산 서비스 제공자(CASP)가 탈중앙 대출 protocol 접근을 중개하는 경우를 포함해 암호자산 대출을 규율하는 방안을 검토하라고 제안했다. 9월 1일 기준 MiCA 아래 발행된 EMT는 39개였고 승인된 ART는 없었다. 이번 문서는 법률 개정안이나 즉시 적용되는 규칙이 아니라, 집행위원회의 재검토에 제출한 감독기관의 의견이다.
+
+### Product / Engineering 관점
+
+**Stablecoin / Payments:** ticker와 token contract만으로 동일 자산 여부를 판단하지 않는다. 발행 법인, 준비금 귀속, 상환 창구, 체인별 발행·소각 책임을 자산 메타데이터와 운영 원장에 넣는다. 여러 발행인이 유동성을 공유하거나 서로 교환을 보장한다면 한 발행인의 중단이 다른 pool로 번지는 상황을 시험해야 한다.
+
+**DeFi / Protocol:** CASP가 DeFi 대출로 연결하는 흐름이 향후 별도 규율 대상이 될 수 있다. frontend 운영 주체, 경로 선택·추천 로직, 수수료 수취, 위험 고지, 사용자 적합성 판단이 단순한 중립 인터페이스인지 중개 활동인지 법무·제품이 함께 검토해야 한다.
+
+**Regulation / Compliance:** EMT·ART·금융상품·토큰화 예금 사이의 분류 결정을 출시 직전 법률 검토에만 맡기지 않는다. 분류 근거와 관할권별 기능 차이를 변경 이력이 남는 의사결정 기록으로 관리하고, 분류 변경이 상장·마케팅·상환·보고 기능을 어떻게 끄거나 바꾸는지 제품 설정과 연결한다.
+
+---
+
+## 5. 토큰화 예금: Swift와 미국 결제망에 연결되는 은행 인프라
+
+9월 24일 두 발표는 토큰화 예금이 별도 블록체인 실험에서 기존 은행 운영망과 연결되는 방향을 보여줬다. IBM은 [Digital Asset Haven의 Swift 공유 원장 연동 베타](https://newsroom.ibm.com/2026-09-24-ibm-expands-its-digital-banking-infrastructure-with-swift-integration-and-digital-asset-haven-on-prem)를 공개했다. ISO 20022 Messaging Adapter를 이용해 기존 메시지 형식으로 토큰화 예금 거래를 지시하며, 은행은 기존 규정 준수 절차를 유지할 수 있다. Swift가 공개한 [초기 참여 은행은 17곳](https://www.swift.com/payments/payment-innovation/blockchain-based-ledger)이다.
+
+IBM은 Digital Asset Haven을 IBM Z와 LinuxONE에서 운영하는 사내 구축형 베타도 내놨다. 솔루션 계층과 키 관리를 자체 데이터센터에 두고, Crypto Express HSM과 confidential computing으로 환경을 분리한다. SaaS·hybrid·사내 구축형이 같은 API와 작업 흐름을 쓴다는 설명은 배포 위치를 바꾸더라도 애플리케이션을 다시 쓰지 않는 운영 모델을 겨냥한다.
+
+같은 날 The Clearing House는 미국 은행의 토큰화 예금을 청산·결제할 [On-Chain Money Initiative의 기술 사업자로 Quant를 선정했다](https://www.theclearinghouse.org/payment-systems/Articles/2026/09/The-Clearing-House-Partners-with-Quant-to-Advance-the--On-Chain-Money-Initiative). Quant는 상호운용성, 거래 흐름 조정, 거래 관리를 맡고 기존 RTP와 CHIPS 망을 연결한다. 참여 기관용 서비스는 2027년 상반기 제공을 목표로 한다.
+
+두 사례 모두 공개 stablecoin 출시가 아니다. 토큰화 예금은 은행 예금의 디지털 표현이며, 참여 기관과 고객은 은행의 규칙·원장·규정 준수 경계 안에 있다. IBM 설명에서도 토큰화 자산은 기존 시스템의 최종 결제에 앞서 24시간 이동한다. 온체인 기록, 은행 원장 반영, 최종 법정화폐 결제를 서로 다른 상태로 봐야 한다.
+
+### Product / Engineering 관점
+
+**Chain / Infrastructure:** ISO 20022 메시지, 공유 원장 거래, 은행 원장 반영, 최종 결제 ID를 하나의 추적 정보로 연결한다. 각 단계의 재시도와 취소 의미가 다르므로 전체 과정이 정확히 한 번만 실행된다고 가정하지 말고, 중복·지연·부분 성공을 대사 절차로 처리해야 한다.
+
+**Stablecoin / Payments:** stablecoin과 토큰화 예금을 같은 "디지털 달러" 잔액으로 합치지 않는다. 발행인, 보유 자격, 운영 시간, 상환 방식, 예금 보호, 체인 밖 최종 결제 여부를 제품에서 구분한다. 24시간 전송이 24시간 법정화폐 유동성을 자동으로 보장하지도 않는다.
+
+**Custody / Exchange:** cloud·hybrid·사내 구축형 선택은 키 수탁뿐 아니라 patching, HSM ceremony, 재해 복구, 감사 증적의 책임을 바꾼다. 같은 API를 사용하더라도 운영 통제가 같다고 가정하지 말고 배포 모델별 책임 표와 복구 목표를 따로 둔다.
+
+---
+
+## 이번 주 우선순위
+
+가장 먼저 stablecoin과 토큰화 예금의 자산 정의를 원장 수준에서 분리한다. 발행인, 준비금 또는 예금 부채, 상환 상대방, 최종 결제 상태를 식별할 수 있어야 미국 규칙안과 EBA의 다중 발행 우려, 은행 공유 원장 연동을 같은 통제 체계 안에서 다룰 수 있다.
+
+지갑과 결제 팀은 반복결제 권한을 편의 기능이 아니라 제한된 위임으로 다뤄야 한다. 승인 범위·취소·credential 교체·중복 청구를 실제 장애 시나리오로 시험한다. Shielded Zcash 지원에서는 host가 계산하고 signer가 승인하는 경계, 기기 표시 내용, viewing 권한의 노출 범위를 함께 검증한다.
+
+규제 발표는 모두 구현 완료가 아니다. 연준 문서는 규칙안이고, EBA 문서는 MiCA 재검토 의견이며, The Clearing House의 네트워크는 2027년 상반기를 목표로 한다. 지금 필요한 일은 출시된 것처럼 홍보하는 것이 아니라, 바뀔 수 있는 규칙의 변경 이력을 관리하고 온체인 실행과 기존 금융 원장의 상태를 대사할 수 있게 만드는 일이다.
+
+> 브리핑은 매주 월요일 Codex로 생성된 분석 자료를 기반으로 작성된다. 게재 전 블로그 운영자의 직접 검수 및 승인을 거친다.
