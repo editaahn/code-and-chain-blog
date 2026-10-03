@@ -1,0 +1,77 @@
+---
+title: "Web3 Weekly Brief 2026/09/28"
+description: "미국 stablecoin 규칙안, 제한형 반복결제 권한, shielded Zcash 하드웨어 서명, MiCA 재검토, 토큰화 예금 인프라의 제품·엔지니어링 영향을 정리한 주간 브리핑"
+date: "2026-09-28"
+category: "crypto"
+subcategory: "web3-brief"
+tags: ["Web3", "Stablecoins", "Wallet Infrastructure", "Zcash", "MiCA", "Tokenized Deposits"]
+published: true
+---
+
+지난주에는 디지털 자산을 기존 금융과 일상 결제에 연결하는 규칙과 권한 구조가 구체화됐다. 미국은 은행 감독을 받는 stablecoin 발행사의 준비자산·자본·인가 절차를 제안했고, 유럽은행감독청(EBA)은 MiCA가 다중 발행 stablecoin과 암호자산 대출을 더 분명하게 다뤄야 한다고 권고했다. 제품 쪽에서는 매번 서명하지 않아도 반복 결제를 처리할 수 있는 제한형 지갑 권한과 shielded Zcash의 하드웨어 서명이 나왔다. 은행권의 토큰화 예금(tokenized deposit)도 독립된 실험을 넘어 기존 메시징·결제망에 연결되는 단계로 이동했다.
+
+이번 브리핑은 한국 시간 기준 2026년 9월 21일부터 27일까지의 발표와 변화를 다룬다.
+
+## 1. 미국 연준: GENIUS Act 아래 stablecoin 발행 규칙안 공개
+
+미국 연방준비제도이사회는 9월 24일 GENIUS Act를 이행하기 위한 [두 가지 규칙안을 공개하고 의견 수렴을 시작했다](https://www.federalreserve.gov/newsevents/pressreleases/bcreg20260924a.htm). 첫 번째 안은 연준 감독을 받는 결제용 stablecoin 발행사가 유통액 전부를 단기 국채 등 허용된 고유동성 자산으로 뒷받침하도록 하고, 신용·운영 위험을 반영한 표준 자본 요건과 위험 관리 기준을 둔다. 준비자산을 보관하는 연준 감독 기관의 의무와 은행이 수행할 수 있는 stablecoin 관련 활동도 함께 다룬다.
+
+두 번째 안은 연준 감독을 받는 주법은행이 자회사를 통해 결제용 stablecoin을 발행할 때 적용할 별도 신청 절차를 만든다. 신청서에는 사업 계획과 재무 정보 등이 들어가며, 결정에 대한 이의 제기와 심리 절차도 제안됐다. 두 안 모두 최종 규칙이 아니다. 의견 수렴은 Federal Register 게재 뒤 60일 동안 진행된다.
+
+준비자산의 장부가치가 유통액과 맞는지만 확인해서는 충분하지 않다. 스트레스 상황에서도 액면가로 신속히 상환할 수 있어야 한다. Michael Barr 연준 이사도 [금리·외환 위험과 보편적인 상환권을 최종 규칙에서 더 분명히 해야 한다](https://www.federalreserve.gov/newsevents/pressreleases/barr-statement-20260924.htm)고 밝혔다. 발행·상환·준비금 관리·수탁을 서로 다른 운영 경계로 설계해야 한다는 뜻이다.
+
+---
+
+
+
+## 2. Polygon OMS: 한 번의 승인으로 반복 stablecoin 결제
+
+Polygon Labs는 9월 21일 Open Money Stack(OMS)에 [반복 stablecoin 결제 규칙](https://polygon.technology/blog/stablecoin-subscriptions)을 추가했다. 사용자는 결제 금액 상한, 호출을 허용할 contract와 기능, 결제 주기, 만료 시점을 한 번 승인한다. 이후 서비스 서버가 결제를 요청하면 지갑의 온체인 Sessions Module이 승인 범위와 맞는지 확인하고, 범위를 벗어난 요청은 contract 단계에서 거부한다. 사용자는 향후 결제를 취소할 수 있다.
+
+카드 정기결제와 비슷한 경험을 만들지만 권한 구조는 다르다. 판매자가 결제 수단을 보관하거나 서버가 지갑 전체 권한을 갖는 대신, 원격 서버가 제한된 session으로 특정 전송만 요청한다. [Smart Sessions 문서](https://docs.polygon.technology/wallets/smart-sessions)에 따르면 session은 시간 제한과 취소 기능을 갖고 native token 또는 ERC-20 전송 권한 안에서 작동한다. session key는 보안 영역(enclave) 밖으로 나오지 않으며, 서버는 스스로 승인 범위를 넓힐 수 없다.
+
+이 구조가 매번 서명하는 마찰을 줄인다고 해서 무신뢰 결제가 되는 것은 아니다. Wallet-as-a-Service(WaaS)는 session signer와 설정 갱신을 관리하고, 보안 영역과 서버의 가용성이 결제 성공에 영향을 준다. 취소 요청은 WaaS가 해당 session을 즉시 사용하지 못하게 하지만, 온체인 설정 항목은 다음 지갑 실행 때 제거된다. 제품은 사용자가 보는 취소 상태와 체인에 반영된 상태를 구분해야 한다.
+
+---
+
+
+
+## 3. Ledger Wallet: shielded Zcash를 하드웨어 서명 기기에서 직접 관리
+
+Ledger는 9월 23일 [Ledger Wallet Desktop의 기본 shielded Zcash 지원](https://www.ledger.com/blog-native-shielded-zcash-support)을 공개했다. 이전에는 Ledger 기기로 shielded ZEC를 관리하려면 별도 보조 지갑을 연결해야 했지만, 이제 Desktop 앱 안에서 shielded 잔액을 추가하고 보내고 받을 수 있다. 지원 대상은 2026년 7월 활성화된 Ironwood shielded pool이며 모바일에서는 아직 이용할 수 없다.
+
+ZEC는 Bitcoin처럼 주소·잔액·거래 정보가 공개되는 transparent 영역과, 영지식 증명으로 거래의 유효성을 확인하면서 주소와 금액을 공개하지 않는 shielded 영역에서 사용할 수 있다. Shielded Zcash는 같은 ZEC를 비공개 pool에 보관하고 전송하는 방식이다. 이번 발표는 그중 Ironwood shielded pool을 Ledger Wallet에서 직접 다룰 수 있게 한 변화다.
+
+개인키를 기기에 남기고 컴퓨터가 거래 계산을 맡는 경계 자체는 Ledger가 transparent ZEC에도 적용해 온 하드웨어 지갑의 공통 구조다. Shielded Zcash에 특화된 부분은 컴퓨터가 영지식 증명에 필요한 계산을 처리하고, Ledger 기기가 새로운 암호 곡선과 주소 형식, Ironwood 거래 구조를 해석해 화면에 표시한 뒤 서명하도록 확장한 데 있다. Ledger는 이 과정에 기기 내 거래 해석과 보안 감사를 포함했다고 설명했다. 사용자는 세무나 규정 준수 담당자에게 지출 권한 없이 거래 이력을 읽을 수 있는 view-only 접근을 줄 수도 있다.
+
+프라이버시 기능을 지갑 본체에 넣는 일은 단순한 기능 추가에 그치지 않는다. Shielded 거래는 공개 explorer만으로 수신자와 금액을 확인하기 어렵기 때문에, 지갑의 거래 내역·백업·감사 자료가 더 중요한 증거가 된다. 반대로 viewing 권한을 과도하게 공유하면 온체인에 드러나지 않던 전체 이력이 노출될 수 있다.
+
+---
+
+
+
+## 4. EBA: MiCA 재검토에서 다중 발행 stablecoin과 DeFi lending을 우선 과제로 제시
+
+[MiCA(Markets in Crypto-Assets Regulation)](https://eur-lex.europa.eu/EN/legal-content/summary/european-crypto-assets-regulation-mica.html?app=true)는 기존 유럽연합 금융법이 다루지 않던 암호자산과 관련 서비스를 EU 전역에서 일관되게 규율하는 법이다. 암호자산의 발행·공시·거래소 상장, 서비스 제공자와 stablecoin 발행사의 인가·감독, 고객 보호와 시장 남용 방지 등을 다룬다. Stablecoin은 단일 법정통화에 가치를 연동한 전자화폐토큰(EMT)과 다른 자산이나 자산 바스켓에 가치를 연동한 자산준거토큰(ART)으로 나눠 규율한다.
+
+유럽은행감독청(EBA)은 9월 24일 유럽연합 집행위원회의 MiCA 재검토 협의에 대한 [공식 의견](https://www.eba.europa.eu/publications-and-media/press-releases/eba-identifies-priorities-review-mica)을 냈다. 현행 ART와 EMT 발행사 규칙은 대체로 적절하다고 평가했지만, 제3국의 다중 발행 stablecoin 구조는 위험이 크다며 규제 보강을 권고했다. 발행사가 준비자산 가운데 예금으로 보유해야 하는 최소 비율도 효과적인 위험 관리를 유지하는 범위에서 재검토할 것을 제안했다.
+
+다중 발행 구조에서는 같은 브랜드의 token을 여러 법인이나 관할권에서 발행할 수 있다. 사용자 화면에는 같은 자산처럼 보여도 법적 발행인, 준비금 pool, 상환 청구권, 손실 부담 주체가 다를 수 있다. EBA는 암호자산 분류의 모호함이 제품 출시 비용과 지연을 만든다고 보고 MiCA의 범위와 정의도 명확히 하라고 권고했다.
+
+또한 암호자산 서비스 제공자(CASP)가 탈중앙 대출 protocol 접근을 중개하는 경우를 포함해 암호자산 대출을 규율하는 방안을 검토하라고 제안했다. 9월 1일 기준 MiCA 아래 발행된 EMT는 39개였고 승인된 ART는 없었다. 이번 문서는 법률 개정안이나 즉시 적용되는 규칙이 아니라, 집행위원회의 재검토에 제출한 감독기관의 의견이다.
+
+---
+
+## 5. 토큰화 예금: Swift와 미국 결제망에 연결되는 은행 인프라
+
+9월 24일 토큰화 예금이 별도 블록체인 실험에서 기존 은행 운영망과 연결되는 방향을 보여주는 두 발표가 있었다. IBM은 [Digital Asset Haven의 Swift 공유 원장 연동 베타](https://newsroom.ibm.com/2026-09-24-ibm-expands-its-digital-banking-infrastructure-with-swift-integration-and-digital-asset-haven-on-prem)를 공개했다. ISO 20022 Messaging Adapter를 이용해 기존 메시지 형식으로 토큰화 예금 거래를 지시하며, 은행은 기존 규정 준수 절차를 유지할 수 있다. Swift가 공개한 [초기 참여 은행은 17곳](https://www.swift.com/payments/payment-innovation/blockchain-based-ledger)이다.
+
+IBM은 Digital Asset Haven을 IBM Z와 LinuxONE에서 운영하는 사내 구축형 베타도 내놨다. 솔루션 계층과 키 관리를 자체 데이터센터에 두고, Crypto Express HSM과 confidential computing으로 환경을 분리한다. IBM은 SaaS, 하이브리드, 온프레미스 환경 전반에서 동일한 API와 워크플로우를 사용하므로, 애플리케이션 코드를 수정하지 않고도 워크로드를 그대로 이전할 수 있다.
+
+같은 날 The Clearing House는 미국 은행의 토큰화 예금을 청산·결제할 [On-Chain Money Initiative의 기술 사업자로 Quant를 선정했다](https://www.theclearinghouse.org/payment-systems/Articles/2026/09/The-Clearing-House-Partners-with-Quant-to-Advance-the--On-Chain-Money-Initiative). Quant는 상호운용성, 거래 흐름 조정, 거래 관리를 맡고 기존 RTP와 CHIPS 망을 연결한다. 참여 기관용 서비스는 2027년 상반기 제공을 목표로 한다.
+
+두 사례 모두 공개 stablecoin 출시가 아니다. 토큰화 예금은 은행 예금의 디지털 표현이며, 참여 기관과 고객은 은행의 규칙·원장·규정 준수 경계 안에 있다. IBM 설명에서도 토큰화 자산은 기존 시스템의 최종 결제에 앞서 24시간 이동한다. 온체인 기록, 은행 원장 반영, 최종 법정화폐 결제를 서로 다른 상태로 봐야 한다.
+
+---
+
+> 브리핑은 매주 월요일 Codex로 생성된 분석 자료를 기반으로 작성된다. 게재 전 블로그 운영자의 직접 검수 및 승인을 거친다.
