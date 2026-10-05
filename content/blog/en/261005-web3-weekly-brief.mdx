@@ -1,0 +1,65 @@
+---
+title: "Web3 Weekly Brief 2026/10/05"
+description: "Product and engineering implications of Base Cobalt, US crypto custody rules, an interbank token deposit, MetaMask security and privacy boundaries, and Ethereum Glamsterdam"
+date: "2026-10-05"
+category: "crypto"
+subcategory: "web3-brief"
+tags: ["Web3", "Base", "Crypto Custody", "Stablecoins", "Wallet Security", "Ethereum"]
+published: true
+---
+
+Last week redrew operational boundaries across regulated assets, consumer wallets, and Ethereum's core protocol. Base moved conditional transactions and issuer controls into the protocol. The US Securities and Exchange Commission (SEC) proposed broader custody routes for advisers and regulated funds. In North Dakota, an interbank dollar token connected Solana to the software banks already use for conventional money movement. MetaMask consolidated security and address-metadata behavior into one default setting while separately responding to an infrastructure incident. Ethereum also fixed the first long-lived public-testnet date for its next major upgrade, Glamsterdam.
+
+This brief covers announcements and developments from September 28–October 4, 2026, in Korea Standard Time.
+
+## 1. Base Cobalt brings conditional transactions and B20 issuer controls to mainnet
+
+Base [completed the Cobalt mainnet upgrade](https://status.base.org/) at 18:00 UTC on September 30. Its headline feature, Validity Transactions, lets a user attach an expiry and conditions such as block height, Flashblock position, or contract-storage values to a signed transaction. The sequencer keeps that transaction out of blocks until every condition matches. A submission through `base_sendRawTransactionValidity` also stays out of the public mempool before execution. If the conditions never become true, it never executes. The block builder now evaluates eligibility that would otherwise require a keeper to watch state and race to submit.
+
+[Base's Cobalt release notes](https://blog.base.dev/cobalt) position the feature for conditional swaps and withdrawals. It can remove polling infrastructure and resubmission races, but it does not freeze the rest of the chain at signing time. Wallets and dApps therefore need to show the execution conditions, expiry, and the possibility that an eligible transaction may still lose the fee-ordering contest. A useful lifecycle must distinguish submitted, parked, eligible, included, and expired states rather than treating the initial signature as a completed order.
+
+Cobalt also extends Base's native B20 token standard. Issuers can compose existing KYC allowlists and sanctions blocklists with AND or OR logic, schedule display-multiplier changes for corporate actions such as splits, and optionally enable `seizeWithMemo`. The last function lets an authorized administrator transfer a holder's balance to another address while recording the reason onchain. These primitives bring compliance and recovery workflows onto the protocol surface for stablecoins and tokenized assets, but they also create an authority model that differs from a typical ERC-20. Wallets, indexers, and explorers need to expose freeze and seizure capabilities, distinguish raw balances from multiplier-adjusted display amounts, and update for the new ABI.
+
+---
+
+## 2. The SEC proposes crypto custody rules for advisers and regulated funds
+
+On October 1, the SEC [proposed new custody rules](https://www.sec.gov/newsroom/press-releases/2026-100-sec-proposal-would-address-how-investment-advisers-funds-can-custody-crypto-assets-under-federal) for registered investment advisers and regulated funds. The proposal acknowledges that existing permitted custodians may not support a new crypto asset when a fund needs it. It would permit qualifying state trust companies to act as custodians and create a route for an adviser or fund to hold an asset itself when no permitted custodian is available. This is not a final rule; the comment period will remain open for 60 days after Federal Register publication.
+
+The proposal's “self-custody” does not mean an individual investor controlling a personal wallet. It means an adviser or fund also acting as custodian for client assets. Commissioner Hester Peirce explained that the entity would have to determine before taking custody—and [reassess quarterly—that no permitted custodian is available](https://www.sec.gov/newsroom/speeches-statements/peirce-statement-proposed-amendments-custody-rules-100126). A state trust company would require initial and annual due diligence on its authorization and safeguards. Adviser or fund custody would carry requirements around expertise, cybersecurity, annual reviews, internal reporting, account statements, and client disclosure.
+
+If adopted, the framework would push institutional custody products beyond key storage. They would need asset-by-asset evidence for custody availability, approvals for bringing an asset in-house, quarterly reassessments, and incident records. Platforms that route assets to state trust companies would also need continuing checks on authorization and controls. More eligible custody paths make wallet policy, key ceremonies, role separation, and auditable approvals more—not less—important.
+
+---
+
+## 3. Roughrider Coin connects a Solana bank token to existing banking software
+
+Fiserv opened its Digital Asset Platform to financial-institution clients on October 1 and announced that Bank of North Dakota's Roughrider Coin was [its first live use case](https://investors.fiserv.com/news-releases/news-release-details/fiserv-digital-asset-platform-goes-live-financial-institution). More than 90 North Dakota banks and credit unions can use it for interbank transfers. VersaBank USA handles issuance, burning, reserve management, and custody; Fireblocks supplies digital-asset infrastructure; and Solana processes the transactions. Participating institutions access it through Fiserv Commercial Center, the same interface they use for conventional interbank money movement.
+
+[Bank of North Dakota's architecture description](https://bnd.nd.gov/roughrider/) makes clear that this is not a public retail stablecoin. It is a permissioned, institution-only token backed one-for-one with US dollars. It uses Solana Token-2022 controls including freeze and clawback capabilities, while participating institutions transact through Fireblocks MPC wallets with automated compliance policies. Minting occurs only after cash moves from an institution's operating account into a designated for-benefit-of account. Arrival in the receiving institution's wallet triggers a smart-contract instruction that automatically burns the token.
+
+Onchain finality and final bank-ledger state are separate events in this design. In addition to the token transfer and automatic burn, funds among the FBO accounts are netted daily and moved with ACH files. A product cannot equate an explorer's success status with completed settlement. It needs a common trace identifier across the chain and bank-ledger legs, with distinct states for pre-mint cash confirmation, post-burn reconciliation, and exceptions. Roughrider Coin shows the controls required when a public chain's speed is placed behind participant restrictions and clawback inside a core-banking workflow.
+
+---
+
+## 4. MetaMask's security defaults expose both metadata and infrastructure dependencies
+
+On September 29, MetaMask consolidated profile and privacy controls into a single `Basic Functionality` setting. [It is on by default for new users](https://metamask.io/en-GB/news/basic-functionality-profile-setting) and powers token and NFT detection, transaction simulation, security alerts, phishing detection, ENS names, contract decoding, and network checks. In exchange, wallet addresses are associated with an individual profile, and some features make standard network requests. A Secret Recovery Phrase wallet can turn the setting off and lose those features. Wallets created with Google, Apple, or Telegram Social Login cannot disable it because the profile is intrinsic to the login model. This is separate from the optional anonymized Metrics setting.
+
+Default-on protection can reduce phishing and blind signing, but it also makes address-to-profile association the default behavior. Self-custody guarantees control of private keys; it does not make the metadata required by token detection, simulation, or security-alert backends invisible. Wallets need to disclose which addresses and requests reach which service, exactly what disappears when a setting is disabled, and how Social Login differs from a recovery-phrase setup before account creation—not only inside a privacy menu.
+
+The same week also exposed a separate operational dependency. Starting September 30, MetaMask responded to [a security incident affecting part of its infrastructure](https://metamask.io/en-GB/news/user-update) by precautionarily exiting affected validators from its non-custodial staking operations. As of October 1, it had found no indication that wallets or customer funds were affected, and it said it did not manage client withdrawal keys. The company has not disclosed the cause, so the attack path or impact should not be inferred. The incident still illustrates that key custody and service availability are different boundaries: funds can remain under user control while staking, simulation, alerts, or other backend-supported features degrade. Status messaging and incident response should report those states separately.
+
+---
+
+## 5. Ethereum takes ePBS and parallel validation to Sepolia with Glamsterdam
+
+On September 28, the Ethereum Foundation [scheduled Glamsterdam for Sepolia](https://blog.ethereum.org/en/2026/09/17/glamsterdam-testnet-announcement) at 13:53:36 UTC on October 6. Hoodi and mainnet dates remain undecided. The upgrade combines the Amsterdam execution-layer changes with the Gloas consensus-layer changes. Its central features are enshrined proposer-builder separation (ePBS) and block-level access lists (BALs).
+
+ePBS moves the exchange and payment between an execution-payload builder and a block proposer into consensus. A proposer includes the builder's commitment before the builder reveals the payload and blob data; a payload timeliness committee attests to whether that reveal arrived on time. This reduces reliance on trusted middleware in the current builder market, while adding new duties and failure modes for validators, builders, and relay infrastructure. BALs record the accounts and storage locations touched in a block, along with post-transaction changes, giving clients the information needed to read state, validate transactions, and compute state roots in parallel.
+
+Glamsterdam also reprices state creation and access, calldata, access lists, and intrinsic transaction work to better reflect resource cost. Contracts that depend on fixed gas stipends, hardcoded gas limits, or assumptions about remaining gas can change behavior or cost. Node operators must update both execution and consensus clients before the Sepolia activation. dApp, wallet, bundler, and gas-estimation teams should use Sepolia to measure estimation drift and failure paths before a mainnet date exists. Observability also needs to distinguish a builder's late payload reveal under ePBS from an ordinary execution failure.
+
+---
+
+> This brief is based on analysis generated with Codex each Monday. It is published only after the blog operator's direct review and approval.
