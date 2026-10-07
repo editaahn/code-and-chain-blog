@@ -1,0 +1,189 @@
+---
+title: "Fusaka, Glamsterdam, Hegota: The Evolution of Ethereum L1 Core and Scalability Roadmap"
+description: "A comprehensive analysis of the structural changes in Ethereum's latest or upcoming hard forks and major proposals impacting L1 core and L2 scalability."
+date: "2026-10-07"
+category: "crypto"
+subcategory: "issues"
+tags: ["Ethereum", "Glamsterdam", "Fusaka", "Hegota"]
+published: true
+---
+# 1. Beginning of the Second Phase of 'Rollup-Centric Ethereum'
+
+Following the introduction of EIP-4844 (Proto-Danksharding) in the Dencun upgrade, Layer 2 transaction fees have significantly decreased. Currently, Ethereum's focus is on expanding the data availability limits submitted by L2, resolving computational and I/O bottlenecks of the Layer 1 execution engine (EVM), and refining protocol-level censorship resistance and account UX.
+
+Ethereum is pursuing a structural overhaul of L1 core and L2 scalability through a hard fork roadmap starting with Fusaka, followed by Glamsterdam and Hegota. The progress of major EIPs and key mechanisms included in each hard fork can be summarized as follows.
+
+## Progress of Core Ethereum EIPs
+
+| Upgrade                        | Major EIPs and Mechanisms | Role and Overview                                       | Progress  |
+| ------------------------------ | ------------------------- | ------------------------------------------------------- | --------- |
+| **Fusaka - Completed 2025.12.3** | EIP-7594 (PeerDAS)       | Expansion of data availability based on p2p subnet      | Included  |
+|                                | EIP-7892 (BPO)           | Node execution and I/O optimization standards based on BPO | Included  |
+|                                | EIP-7825                 | Limit on gas consumption per transaction                | Included  |
+| **Glamsterdam - Expected 2026 4Q** | EIP-7732 (ePBS)        | Protocol-embedded Proposer-Builder separation and Relay removal | Under discussion |
+|                                | EIP-7928 (BALs)          | EVM parallel processing and storage prefetching access list | Under discussion |
+|                                | EIP-8037                 | State creation fee segmentation and multidimensional gas model | Under discussion |
+| **Hegota - Expected 2027**     | EIP-7805 (FOCIL)         | Fork-choice linked inclusion list based on multiple validator committees | Under discussion |
+|                                | EIP-8141 (Frame Tx)      | Native account abstraction based on verification-execution frame separation | Under discussion |
+
+---
+
+# 2. Fusaka
+
+> "Blob capacity expansion for L2 rollup chains and securing L1 computation safety"
+
+## ① PeerDAS: Blob Expansion Based on p2p Subnet
+
+Under the EIP-4844 system, all validation nodes had to directly download the entire blob data, making it difficult to increase blob generation indefinitely due to network bandwidth limitations.
+
+With the application of PeerDAS (Peer Data Availability Sampling), nodes only need to receive 'divided fragments' through a p2p subnet instead of the entire data, and verify the availability of the entire data through random sampling. This allows for the expansion of blob capacity without increasing the bandwidth burden on individual nodes.
+
+- 1D Reed-Solomon Erasure Coding: [Details]()
+- **Utilization of p2p Subnet**
+  - The p2p subnet has been a core infrastructure since the launch of Ethereum 2.0 (Proof of Stake) in 2020. If all validator nodes in Ethereum were to receive all messages worldwide, network propagation bottlenecks would occur, so data is propagated by interest to prevent this.
+  - In PeerDAS, this structure is updated to distribute the blob data propagation bandwidth. Instead of downloading all fragments of every blob directly, a node downloads and verifies only the data fragments (Columns) of the p2p subnet channel it belongs to. For other fragments not received, the node requests a very small sample from nodes in other subnets for verification.
+
+[EIP-7594: PeerDAS - Peer Data Availability Sampling](https://eips.ethereum.org/EIPS/eip-7594)
+
+## ② BPO (Block Parameter Only)
+
+As the demand for L2 data availability rapidly increases, blob capacity continues to reach its limits. EIP-7892 introduces a separate upgrade that adjusts only the protocol parameter settings related to blobs without modifying client software code.
+
+- Blob Target (`target`): Target number of blobs per block (average usage to maintain; if usage exceeds the target, fees are increased to suppress demand)
+- Blob Limit (`max`): Maximum number of blobs per block
+- Blob Base Fee Update Fraction (`baseFeeUpdateFraction`): Determines how the blob gas price is adjusted per block
+
+Increasing the max means increasing the instantaneous processing capacity, while increasing the target means raising the usage threshold at which fees start to rise, allowing for more average usage.
+
+[EIP-7892: Blob Parameter Only Hardforks](https://eips.ethereum.org/EIPS/eip-7892)
+
+## ③ **Transaction Gas Limit Cap**
+
+The maximum gas limit that a single transaction can consume is limited to approximately `16,777,216 (2^24) gas`.  
+This is to prevent DoS attacks where a single transaction monopolizes the entire block's computational resources, to allocate gas fairly among transactions within a block, and to prevent extremely long block verification times, thereby facilitating synchronization between nodes.
+
+A key point to note about the gas cap is that it limits not the **gas actually consumed** but the **gas specified in the transaction** `gasLimit`. For example, even if only 1,000,000 gas is needed for actual execution, if `gasLimit = 20,000,000` is specified generously, the transaction itself will be rejected.
+
+[EIP-7825: Transaction Gas Limit Cap](https://eips.ethereum.org/EIPS/eip-7825)
+
+---
+
+# 3. Glamsterdam
+
+> Internalizing the block generation system that relied on external middleware into the L1 protocol and restructuring the EVM computation architecture for parallel processing
+
+## ① ePBS (Enshrined Proposer-Builder Separation)
+
+The existing PBS (Proposer-Builder Separation) structure operated the protocol by separating the Validator's role into Proposer and Builder, relying on an off-chain middleware called MEV-Boost.
+
+- MEV-Boost Middleware
+  - Simplifying the block cycle in PBS and ePBS is as follows.  
+  `Builder creates a block and bids -> Block validity is verified (the verifying party differs between PBS and ePBS) -> Proposer selects the block with the highest bid`
+  - Concerns existed about Builders sending invalid blocks or Proposers preemptively viewing and stealing completed block contents.
+  - A third-party intermediary called '**Relay**' is placed between Proposer and Builder to establish trust.
+  - Relay checks the validity of blocks and only shows the block header and bid price to the Proposer to prevent theft. It also handles the role of propagating the block chosen by the Proposer to the network.
+
+Since Relay was operated as a centralized server outside the protocol, there was a risk that block generation could be blocked if centralization occurred or if a failure happened.
+
+EIP-7732 **ePBS** (Enshrined PBS) eliminates the existence of Relay and 'enshrines' the role separation of Proposer and Builder into the internal code of the Ethereum consensus layer. Without Relay, block headers and payloads can be exchanged between Proposer and Builder in a trustless environment, and the protocol guarantees Builder's block submission and Proposer's fee receipt through a two-step payload verification method.
+
+[EIP-7732: Enshrined Proposer-Builder Separation](https://eips.ethereum.org/EIPS/eip-7732)
+
+## ② BALs: Foundation for EVM Parallel Processing
+
+The existing EVM executed transactions sequentially, applying state changes one by one. Since it was unknown which storage slots would be accessed and changed before executing transactions, parallel processing using multiple cores was not possible when processing a single block, even if nodes had multiple CPU cores.
+
+BALs (Block Access Lists / EIP-7928) summarize the access targets (accounts, storage slots, etc.) at the block level when the block builder assembles a block and includes them in the block header and body. When a verification node receives a block, it refers to BALs to identify transaction groups without storage conflicts and distributes them to multiple CPU cores for parallel execution.
+
+```
+            [ BALs (Block Access Lists) analysis ]
+                           │
+
+   ┌───────────────────────┼───────────────────────┐
+   ▼                       ▼                       ▼
+
+  [ Group A ]             [ Group B ]             [ Group C ]
+  Tx 1, Tx 3 (access A)     Tx 2 (access B)         Tx 4, Tx 5 (access C)
+  │                       │                       │
+  Core 1 executes         Core 2 executes         Core 3 executes
+  └───────────────────────┼───────────────────────┘
+                          ▼
+                    [ Final state applied ]
+
+```
+
+[EIP-7928: Block Access Lists](https://eips.ethereum.org/EIPS/eip-7928)
+
+## ③ Gas Model Overhaul: Separation of Execution/State Resources
+
+In Glamsterdam, the gas fee mechanism is also overhauled. While Fusaka's **EIP-7825** maintains the limit on execution operations for a single transaction, Glamsterdam's **EIP-8037** separates the EVM execution operations and state creation costs in a multidimensional manner.
+
+By imposing relatively high gas costs on operations that permanently occupy the node's disk capacity, such as creating new accounts or allocating storage slots, it suppresses State Bloat (state capacity expansion) and separates the fee structure from simple computational tasks.
+
+[EIP-8037: State Creation Gas Restructuring](https://eips.ethereum.org/EIPS/eip-8037)
+
+---
+
+# 4. Hegota
+
+> Checking the enhanced power of Builders after the introduction of ePBS and improving the transaction approval system
+
+## ① FOCIL (**Fork-choice enforced Inclusion Lists)**
+
+Under the ePBS system, there is a possibility that high-performance Builders may intentionally exclude or censor specific transactions. To prevent this, a policy called FOCIL is introduced.
+
+FOCIL involves multiple validators randomly selected as a committee, each observing the mempool and creating an **Inclusion List** of transactions that must be included.
+
+In FOCIL, block validity verification is linked to the voting actions of Attesters. Attester nodes verify whether the block proposed by the Builder meets the requirements based on the Inclusion List they have secured. If the Builder unjustifiably excludes transactions from the list, Attesters do not cast proof votes for that block. Blocks that do not receive votes are naturally not selected as canonical blocks of the chain according to the fork-choice rule and are eliminated.
+
+[EIP-7805: Fork-choice enforced Inclusion Lists (FOCIL)](https://eips.ethereum.org/EIPS/eip-7805)
+
+## ② Frame Transactions: Native Account Abstraction Including Gas Payment Approval
+
+Ethereum's account abstraction (AA) has evolved through ERC-4337 (smart contract wallet-based off-chain infrastructure) to EIP-7702 in the Pectra upgrade (a specification that temporarily grants contract code to EOA). Hegota's Frame Transactions is a specification that integrates this flow into the L1 native transaction framework level.
+
+EIP-8141 separates the transaction structure into **Validation Frame** and **Execution Frame**.
+
+```
+
+[ Frame Transaction (EIP-8141) structure ]
+┌────────────────────────────────────────────────────────┐
+│  1. Validation Frame                                   │
+│     - Signature verification (custom logic such as     │
+│       P-256 / passkeys)                                │
+│     - Gas payment approval (Paymaster logic or         │
+│       payment in an alternative token)                 │
+├────────────────────────────────────────────────────────┤
+│  2. Execution Frame                                    │
+│     - Actual DApp calls and state-changing operations  │
+└────────────────────────────────────────────────────────┘
+
+```
+
+- **Validation Frame**
+  - Before a transaction enters a block, it first executes custom logic defined in the account (e.g., "Is the P-256 passkey signature valid?", "Has the daily transfer limit been exceeded?").
+  - The transaction proceeds to the next stage only if this validation frame returns `True` and the gas fee is paid.
+- **Execution Frame**
+  - Once approval is complete, the logic for actually transferring tokens or calling smart contracts is executed.
+
+In the Validation Frame stage, not only is the account's own approval logic (e.g., optimized P-256 passkey signature verification in Fusaka) executed, but **gas payment approval** processing can also be performed. This allows for handling desired cryptographic algorithm signatures and third-party gas payment (Paymaster) logic within the L1 native transaction pipeline without going through a separate ERC-4337 bundler network.
+
+[EIP-8141: Frame Transactions](https://eips.ethereum.org/EIPS/eip-8141)
+
+---
+
+# 5. Remaining Challenges After Expansion
+
+Even after the restructuring through Fusaka, Glamsterdam, and Hegota, there are ongoing challenges in the Ethereum ecosystem that need continuous evaluation.
+
+1. **Concentration in the Builder Layer**: Even if the reliance on relays in the block proposal process is reduced through ePBS, the block generation market may still be concentrated among a few specialized Builders with high-performance MEV algorithms and large capital.
+2. **Node Operation Resource Burden**: While technologies like PeerDAS, BALs, and BPO help suppress the increase in node requirements, the burden of multi-core/RAM memory specifications to support increased data processing and parallel processing remains a constant factor in maintaining the operation of small-scale validation nodes.
+3. **Security and Decentralization of L2 Itself**: Regardless of improvements in L1 data availability and execution performance, the decentralization level of Sequencers used by each L2 chain and the completeness of Fraud/Validity Proof systems are areas that need to be separately verified and evaluated within the L2 ecosystem.
+
+---
+
+# 7. Summary
+
+- **Fusaka**: Expands **data availability space for L2** through PeerDAS and BPO (EIP-7892) and establishes L1 computation safety with EIP-7825.
+- **Glamsterdam**: Absorbs block building **into the L1 protocol** with ePBS (EIP-7732) and prepares the foundation for **EVM parallel execution** with BALs (EIP-7928) and gas overhaul (EIP-8037).
+- **Hegota**: Complements **censorship resistance rules** with FOCIL (EIP-7805) and establishes a **native account abstraction system including gas payment approval** with Frame Transactions (EIP-8141).
