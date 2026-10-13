@@ -8,58 +8,64 @@ tags: ["Web3", "Base", "Crypto Custody", "Stablecoins", "Wallet Security", "Ethe
 published: true
 ---
 
-지난주에는 규제 자산과 일반 사용자의 지갑, Ethereum 핵심 protocol이 서로 다른 층에서 운영 경계를 다시 그렸다. Base는 조건부 transaction과 발행사 통제를 protocol에 넣었고, 미국 증권거래위원회(SEC)는 투자자문사와 규제 펀드의 암호자산 수탁 경로를 넓히는 규칙안을 냈다. 북다코타에서는 은행 간 달러 token이 Solana와 기존 은행 업무 화면을 잇는 실사용 단계에 들어갔다. MetaMask는 보안 기능의 기본값과 주소 정보 처리 방식을 한 설정으로 묶는 동시에 별도 인프라 사고로 validator를 이탈시켰다. Ethereum은 다음 핵심 업그레이드 Glamsterdam의 첫 장기 공개 testnet 일정을 확정했다.
-
 이번 브리핑은 한국 시간 기준 2026년 9월 28일부터 10월 4일까지의 발표와 변화를 다룬다.
 
-## 1. Base Cobalt: 조건부 transaction과 B20 발행사 통제가 mainnet에 도입
+## 1. Base: Cobalt 메인넷 업그레이드
 
-Base는 9월 30일 18:00 UTC에 [Cobalt 업그레이드를 mainnet에서 완료했다](https://status.base.org/). Cobalt의 핵심인 Validity Transactions는 사용자가 서명한 transaction에 block 높이, Flashblock 위치, contract storage 값 같은 조건과 만료 범위를 붙인다. Sequencer는 모든 조건이 맞을 때까지 transaction을 block에 넣지 않는다. `base_sendRawTransactionValidity`로 제출된 내용은 실행되기 전까지 공개 mempool에 드러나지 않으며, 조건이 끝내 성립하지 않으면 실행되지 않는다. 가격 조건을 감시하는 별도 keeper가 transaction을 다시 보내는 구조 대신 Base의 block builder가 조건을 판정하는 방식이다.
+베이스는 UTC 기준 9월 30일 18:00에 [Cobalt 메인넷 업그레이드를 완료했다](https://status.base.org/). 핵심 기능인 유효성 트랜잭션(Validity Transactions)을 이용하면 사용자는 서명된 트랜잭션에 만료 시간과 블록 높이, Flashblock 위치, 컨트랙트 스토리지값 등의 조건을 첨부할 수 있다. **시퀀서는 해당 트랜잭션을 보관하다가 모든 조건이 충족될 때만 블록에 포함한다**. `base_sendRawTransactionValidity`로 제출된 트랜잭션은 실행 전까지 공개 멤풀에 노출되지 않으며, 조건이 계속 맞지 않으면 끝내 실행되지 않는다. 기존에는 Keeper가 상태를 감시하며 제출 경쟁을 벌여야 했으나, 이제는 블록 빌더가 직접 자격을 평가한다.
 
-[Base의 Cobalt 설명](https://blog.base.dev/cobalt)에 따르면 이 기능은 조건부 swap이나 출금에서 감시 서버와 재전송 경쟁을 줄일 수 있다. 그러나 서명 시점의 예상 결과와 실제 실행 시점의 상태가 달라질 수 있다는 문제는 남는다. Wallet과 dApp은 사용자가 무엇에 서명하는지만 보여주는 데 그치지 않고, 어떤 조건에서 언제까지 실행될 수 있는지, 조건이 성립해도 수수료 경쟁 때문에 포함되지 않을 수 있는지를 함께 설명해야 한다. 주문 상태도 제출·대기·조건 충족·포함·만료를 구분해야 한다.
+[베이스의 Cobalt 릴리스 노트](https://blog.base.dev/cobalt)는 이 기능을 조건부 스왑과 출금에 유용하다고 설명한다. 폴링 인프라나 재제출 경쟁을 없애주지만, 서명 시점에 체인의 나머지 상태까지 고정해 주지는 않는다. 따라서 지갑과 dApp은 실행 조건, 만료 시간, 그리고 자격을 갖춘 트랜잭션이라도 가스비 경합에서 밀릴 수 있음을 사용자에게 명확히 보여줘야 한다. 또한 트랜잭션 생명주기를 다룰 때 초기 서명을 완료된 주문으로 처리하기보다 제출됨, 대기 중, 자격 갖춤, 블록 포함, 만료 등의 상태로 구분해 관리하는 것이 바람직하다.
 
-Cobalt는 Base의 native token 표준 B20에도 세 기능을 더했다. 발행사는 KYC allowlist와 제재 blocklist 같은 기존 정책을 AND 또는 OR로 조합할 수 있고, 주식 분할처럼 표시 수량을 바꾸는 multiplier를 미리 예약할 수 있다. `seizeWithMemo`는 해당 기능을 켠 token에 한해 권한 있는 관리자가 보유자의 잔액을 다른 주소로 옮기고 사유를 onchain memo로 남기게 한다. 이 기능은 stablecoin과 tokenized asset의 규제·복구 요구를 protocol 표면에 올리지만, 일반 ERC-20과 다른 권한 모델도 만든다. Wallet, indexer, explorer는 동결·압류 가능 여부와 multiplier를 읽어 실제 raw balance, 화면 표시 수량, 발행사 권한을 혼동 없이 보여줘야 한다. Indexer는 새 ABI도 반영해야 한다.
-
----
-
-## 2. 미국 SEC: 투자자문사와 펀드의 암호자산 수탁 규칙안 공개
-
-SEC는 10월 1일 등록 투자자문사와 규제 펀드가 암호자산을 보관하는 방식을 다루는 [새 규칙안을 제안했다](https://www.sec.gov/newsroom/press-releases/2026-100-sec-proposal-would-address-how-investment-advisers-funds-can-custody-crypto-assets-under-federal). 기존 규칙이 허용하는 수탁 기관만으로는 새 자산을 제때 지원하기 어렵다는 문제를 인정하고, 일정 조건 아래 state trust company를 수탁 기관으로 사용할 수 있게 한다. 허용된 수탁 기관이 특정 자산을 맡을 수 없을 때에는 투자자문사나 펀드가 직접 보관하는 경로도 제시했다. 이는 최종 규칙이 아니며 Federal Register 게재 뒤 60일 동안 의견을 받는다.
-
-여기서 말하는 self-custody는 개인이 자기 지갑을 직접 관리한다는 뜻이 아니다. 투자자문사나 펀드가 고객 자산의 수탁자 역할까지 맡는 구조다. Hester Peirce 위원은 [허용된 수탁 기관이 없다는 판단을 처음과 이후 매 분기 다시 내려야 하며](https://www.sec.gov/newsroom/speeches-statements/peirce-statement-proposed-amendments-custody-rules-100126), state trust company를 쓸 때도 주 감독기관의 인가 범위와 도난·손실·오용 방지 절차를 매년 확인해야 한다고 설명했다. 직접 보관에는 수탁 전문성, 사이버 보안, 연례 검토, 내부 보고, 계좌 명세와 고객 고지 같은 통제가 붙는다.
-
-규칙안이 확정되면 기관용 custody 제품은 단순한 key 보관 서비스를 넘어 자산별 수탁 가능성 판단과 증빙을 관리해야 한다. 지원하지 않는 신규 token을 어떤 기준으로 거절했는지, 직접 보관 전환을 누가 승인했는지, 분기 재평가와 사고 대응 기록이 남는지가 제품 요건이 된다. State trust company를 연결하는 플랫폼도 인가 상태와 통제 절차를 지속적으로 확인해야 한다. 선택지가 늘어나는 만큼 wallet policy, key ceremony, 역할 분리, 감사 가능한 승인 흐름이 규제 준수의 중심으로 이동한다.
+Cobalt는 베이스의 **자체 토큰 표준인 B20도 확장**한다. 발행자는 기존 KYC 화이트리스트와 제재 블랙리스트를 AND/OR 논리로 조합할 수 있고, 주식 분할 같은 권리 행사(Corporate Action)에 맞춰 표시 수량 배수를 예약 변경할 수 있으며, 필요 시 `seizeWithMemo` 기능을 활성화할 수 있다. 마지막 기능은 승인된 관리자가 사유를 온체인에 기록하면서 특정 보유자의 잔액을 다른 주소로 강제 이체할 수 있게 한다. 이러한 원형(primitive) 기능들은 스테이블코인과 토큰화 자산의 규제 준수 및 회수 프로세스를 프로토콜 수면 위로 올려놓지만, 일반적인 ERC-20과는 전혀 다른 권한 모델을 형성한다. 지갑, 인덱서, 익스플로러는 계정 동결 및 몰수 기능을 명확히 노출하고, 실제 잔액과 배수가 적용된 표시 잔액을 구분하며, 새 ABI에 맞게 시스템을 업데이트해야 한다.
 
 ---
 
-## 3. Roughrider Coin: Solana 위 은행 간 달러 token이 기존 은행 화면에 연결
+## 2. SEC: 자문사 및 규제 펀드 대상 암호화폐 수탁 규제안
 
-Fiserv는 10월 1일 Digital Asset Platform을 금융기관 고객에게 열고, 첫 실사용 사례로 Bank of North Dakota(BND)의 Roughrider Coin을 [가동했다고 발표했다](https://investors.fiserv.com/news-releases/news-release-details/fiserv-digital-asset-platform-goes-live-financial-institution). 북다코타의 90곳이 넘는 은행과 신용조합이 은행 간 자금 이동에 쓸 수 있다. VersaBank USA가 발행·소각·준비금 관리와 수탁을 맡고, Fireblocks가 digital asset 인프라를 제공하며, transaction은 Solana에서 처리된다. 참여 기관은 별도 crypto 운영 화면이 아니라 기존 Fiserv Commercial Center에서 이를 사용한다.
+10월 1일, SEC는 등록된 투자 자문사와 규제 펀드를 위한 [새로운 수탁 규제안을 제안했다](https://www.sec.gov/newsroom/press-releases/2026-100-sec-proposal-would-address-how-investment-advisers-funds-can-custody-crypto-assets-under-federal). 펀드가 신규 암호화폐 자산을 취급하려 할 때 기존의 적격 수탁 기관이 이를 지원하지 못할 수 있음을 인정한 조치다. 제안서에 따르면 요건을 갖춘 주(State) 신탁회사[^1]가 수탁 기관으로 참여할 수 있으며, 적격 수탁 기관을 찾을 수 없는 경우 자문사나 펀드가 해당 자산을 직접 수탁할 수 있는 길도 열린다. 이는 확정안이 아니며, 관보 게재 후 60일간 의견 수렴을 거치게 된다.
 
-[BND가 공개한 구조](https://bnd.nd.gov/roughrider/)를 보면 이 자산은 일반 사용자가 살 수 있는 공개 stablecoin이 아니다. 금융기관만 쓰는 permissioned token이며 1달러마다 미국 달러 1달러로 뒷받침된다. Solana Token-2022의 freeze와 clawback 계열 통제를 쓰고, 기관은 Fireblocks의 MPC wallet과 자동 compliance policy로 거래한다. 은행의 운영 계좌에서 지정 FBO(for benefit of) 계좌로 현금 이체가 확인돼야 mint가 일어나며, 수취 기관 wallet에 도착하면 자동 burn을 실행하는 smart contract 명령이 시작된다.
+여기서 말하는 자체 수탁(Self-custody)은 개인 투자자가 개인 지갑을 직접 관리하는 것을 의미하지 않는다. 자문사나 펀드가 고객 자산의 수탁 기관 역할을 겸하는 것을 뜻한다. Hester Peirce 위원은 수탁을 맡기 전 적격 수탁 기관이 없는지 먼저 확인해야 하며, [이를 분기마다 재평가해야 한다](https://www.sec.gov/newsroom/speeches-statements/peirce-statement-proposed-amendments-custody-rules-100126)고 설명했다. 주 신탁회사는 인가 상태와 보안 조치에 대해 최초 및 연례 실사를 받아야 한다. 또한 자문사나 펀드가 직접 수탁을 맡을 경우 전문성, 사이버 보안, 연례 점검, 내부 보고, 계좌 내역서 발급, 고객 공시 등의 까다로운 요건을 충족해야 한다.
 
-이 설계에서 onchain finality와 은행 장부의 최종 상태는 같은 사건이 아니다. Token 전송과 자동 burn 외에도 FBO 계좌 사이의 자금은 매일 합산한 뒤 ACH 파일로 움직인다. 따라서 explorer의 성공 표시만으로 고객이나 운영자에게 완료를 알리면 안 된다. 제품은 chain transaction과 은행 원장 처리를 하나의 추적 ID로 묶고, mint 전 현금 확인·burn 후 대사·예외 처리 상태를 각각 드러내야 한다. 공개 chain의 속도를 쓰면서도 참여자 제한과 clawback을 유지한 이번 사례는 stablecoin 인프라가 기존 core banking 업무 안으로 들어갈 때 필요한 경계가 무엇인지 보여준다.
-
----
-
-## 4. MetaMask: 보안 기능의 기본값이 주소 metadata 결합과 인프라 의존성을 함께 드러내다
-
-MetaMask는 9월 29일 프로필과 개인정보 설정을 `Basic Functionality` 하나로 묶었다. [이 설정은 새 사용자에게 기본으로 켜지며](https://metamask.io/en-GB/news/basic-functionality-profile-setting), token·NFT 탐지, transaction simulation, 보안 경고, phishing 탐지, ENS 이름, contract decoding과 network 확인을 작동시킨다. 그 대가로 wallet 주소가 개인 프로필과 연결되고 일부 기능은 표준 network 요청을 보낸다. Secret Recovery Phrase로 만든 wallet은 설정을 끌 수 있지만 기능이 줄어든다. Google·Apple·Telegram Social Login wallet은 프로필이 로그인 구조의 일부여서 끌 수 없다. 선택형 익명 통계인 Metrics와는 별개다.
-
-보안 기능을 기본으로 제공하면 phishing과 blind signing을 줄일 수 있지만, 여러 주소의 연관 정보와 개인 프로필을 결합하는 일도 기본 동작이 된다. Self-custody는 private key의 통제권을 뜻할 뿐, token 탐지·simulation·경고를 제공하는 서버가 보지 못하는 metadata까지 보장하지 않는다. Wallet 제품은 단순한 설정 스위치보다 어떤 주소와 요청이 어느 서비스로 가는지, 기능을 끄면 정확히 무엇이 사라지는지, Social Login과 recovery phrase 방식의 개인정보 보호 차이를 가입 전에 설명해야 한다.
-
-같은 주에 운영 의존성도 드러났다. MetaMask는 9월 30일부터 일부 인프라의 [보안 사고에 대응해 영향받은 non-custodial staking validator를 예방적으로 exit시켰다](https://metamask.io/en-GB/news/user-update). 10월 1일 기준 wallet이나 고객 자금이 영향을 받았다는 징후는 없고, MetaMask는 고객 withdrawal key를 보관하지 않는다고 밝혔다. 원인이 아직 공개되지 않은 만큼 피해나 공격 범위를 추정할 수는 없다. 다만 key custody와 서비스 가용성은 별개의 경계다. Wallet key가 안전해도 staking backend, validator 운영, simulation과 경고 서비스가 중단될 수 있으므로 제품 상태 화면과 사고 대응은 자금 통제권과 부가 서비스 상태를 분리해 알려야 한다.
+이 프레임워크가 최종 채택되면 기관용 수탁 제품의 역할은 단순히 단순 키 보관에 그치지 않는다. 자산별 수탁 가능 여부 증빙, 내부 수탁 승인 절차, 분기별 재평가, 사고 기록 관리 기능까지 갖춰야 한다. 자산을 주 신탁회사로 전달하는 플랫폼 역시 해당 기관의 인가 상태와 통제력을 지속적으로 검증해야 한다. 수탁 경로가 다양해질수록 지갑 정책, 키 생성 및 관리 의식(Key Ceremony), 역할 분담, 감사 가능한 승인 절차의 중요성은 더욱 커질 수밖에 없다.
 
 ---
 
-## 5. Ethereum Glamsterdam: ePBS와 병렬 검증을 Sepolia에서 시험
+## 3. Roughrider: 솔라나 기반 은행 토큰을 기존 코어 뱅킹 시스템과 연동
 
-Ethereum Foundation은 9월 28일 [Glamsterdam 업그레이드를 Sepolia에서 10월 6일 13:53:36 UTC에 활성화한다고 발표했다](https://blog.ethereum.org/en/2026/09/17/glamsterdam-testnet-announcement). Hoodi와 mainnet 일정은 아직 정해지지 않았다. Glamsterdam은 Amsterdam execution layer와 Gloas consensus layer 변경을 묶으며, 핵심은 protocol에 내장된 proposer-builder separation(ePBS)과 block-level access list(BAL)다.
+Fiserv는 10월 1일 자사의 디지털 자산 플랫폼을 금융기관 고객들에게 개방하고, 노스다코타 은행의 'Roughrider Coin'이 [첫 번째 실사용 사례가 되었다고 발표했다](https://investors.fiserv.com/news-releases/news-release-details/fiserv-digital-asset-platform-goes-live-financial-institution). Roughrider Coin은 퍼블릭 체인의 빠른 속도를 엄격한 참여자 제한 및 회수 통제권과 결합해 코어 뱅킹 워크플로 안으로 녹여낸 대표적인 사례다. 
 
-ePBS는 block builder가 실행 payload를 만들고 proposer가 이를 선택하는 교환과 보상을 consensus 규칙 안으로 옮긴다. Proposer는 builder의 commitment를 먼저 넣고, builder는 뒤이어 payload와 blob data를 공개한다. Payload timeliness committee는 제때 공개됐는지를 확인한다. 현재의 외부 builder middleware 의존성을 줄이는 대신 validator, builder, relay 계층에 새로운 역할과 실패 상태가 생긴다. BAL은 한 block에서 읽고 쓴 account와 storage 위치, transaction 뒤 상태 변화를 기록해 client가 disk state를 병렬로 읽고 transaction과 state root를 병렬 검증할 기반을 만든다.
+노스다코타주 내 90개 이상의 은행과 신용협동조합이 이를 은행 간 자금 이체에 활용할 수 있다. VersaBank USA가 발행·소각·준비금 관리·수탁을 담당하고, Fireblocks가 디지털 자산 인프라를 제공하며, 솔라나가 트랜잭션을 처리한다. 참여 기관들은 기존의 은행 간 자금 이체에 사용하던 '파이서브 커머셜 센터' 인터페이스를 그대로 활용해 거래한다.
 
-이번 업그레이드는 gas 계산도 바꾼다. State 생성과 접근, calldata, access list, transaction 기본 비용을 실제 자원 부담에 가깝게 다시 매긴다. 고정 gas stipend, hardcoded gas limit, 남은 gas 양을 전제로 한 contract는 동작이나 비용이 달라질 수 있다. Node 운영자는 Sepolia 활성화 전에 execution·consensus client를 모두 올려야 하고, dApp·wallet·bundler·gas estimator 팀은 mainnet 날짜를 기다리지 말고 Sepolia에서 추정 오차와 실패 경로를 확인해야 한다. 특히 ePBS 뒤에는 builder가 payload를 늦게 공개하는 경우와 일반 transaction 실행 실패를 관측 지표에서 구분할 필요가 있다.
+[노스다코타 은행의 아키텍처 설명](https://bnd.nd.gov/roughrider/)에 따르면, 이 토큰은 일반 소매용 공개 스테이블코인이 아니다. 미국 달러와 1:1로 매칭되는 허가형 기관 전용 토큰이다. 계정 동결 및 회수(clawback) 기능이 포함된 솔라나 Token-2022 제어 기능을 사용하며, 참여 기관들은 자동화된 컴플라이언스 정책이 적용된 파이어블록스 MPC 지갑을 통해 거래한다. 토큰 민팅은 참여 기관의 운영 계좌에서 지정된 수익자 지정 계좌(FBO)로 현금이 입금된 후에만 실행된다. 수신 기관의 지갑에 토큰이 도착하면 스마트 컨트랙트 명령이 작동하여 토큰을 자동으로 소각한다.
+
+이 구조에서는 온체인 최종성(Finality)과 최종 은행 장부 상태가 서로 별개로 동작한다. 토큰 전송과 자동 소각 외에도 FBO 계좌 간 자금은 매일 상계 정산되어 ACH 파일[^2]로 이동한다. 따라서 시스템이 블록체인 탐색기의 성공 상태를 곧바로 최종 정산 완료로 간주해서는 안 된다. 
+
+---
+
+## 4. 메타마스크의 보안 기본 설정, 메타데이터 노출과 인프라 의존성 문제 동시에 드러내
+
+9월 29일, 메타마스크는 프로필 및 개인정보 제어 기능을 단일 기본 기능 설정으로 통합했다. [이 설정은 신규 사용자에게 기본적으로 활성화되며](https://metamask.io/en-GB/news/basic-functionality-profile-setting) 토큰 및 NFT 감지, 트랜잭션 시뮬레이션, 보안 알림, 피싱 방지, ENS 도메인 해독, 컨트랙트 디코딩, 네트워크 상태 점검을 지원한다. 그 대가로 지갑 주소는 개별 프로필과 연결되며, 일부 기능 작동 시 표준 네트워크 요청을 전송하게 된다. 복구 문구(Secret Recovery Phrase) 방식 지갑은 이 설정을 끌 수 있지만 해당 기능들을 이용할 수 없게 된다. 반면 구글, 애플, 텔레그램 등 소셜 로그인을 통해 생성된 지갑은 프로필 자체가 로그인 모델에 귀속되어 있어 이 설정을 끌 수 없다. 이는 선택 항목인 익명 지표 수집 설정과는 별개의 사안이다.
+
+기본 활성화된 보안 보호 기능은 피싱이나 내역을 알 수 없는 서명(Blind Signing) 사고를 줄여주지만, 주소와 프로필의 연동을 기본 동작으로 만든다. 자체 수탁이 개인키의 제어권을 보장할지는 몰라도, 토큰 감지·시뮬레이션·보안 알림 백엔드에 필요한 메타데이터까지 은폐해 주지는 않는다. 지갑 서비스는 계정 생성 전 단계에서 어떤 주소와 요청이 어떤 서비스로 전송되는지, 설정을 끌 때 정확히 어떤 기능이 비활성화되는지, 그리고 소셜 로그인 방식이 복구 문구 방식과 어떻게 다른지 개인정보 메뉴 밖에서도 명확히 안내해야 한다.
+
+같은 주에는 별도의 운영상 인프라 의존성 문제도 불거졌다. 9월 30일부터 메타마스크는 [자사 인프라 일부에 영향을 미친 보안 사고에 대응하여](https://metamask.io/en-GB/news/user-update) 비수탁 스테이킹 운영 중인 노드 중 영향받은 검증인들을 선제적으로 이탈 처리했다. 10월 1일 기준 메타마스크는 지갑이나 고객 자금에 영향이 미친 정황은 없으며, 자사가 고객의 출금 키를 관리하지 않는다고 밝혔다. 회사 측이 구체적인 원인을 밝히지 않았으므로 공격 경로나 영향을 섣불리 추정해서는 안 된다. 하지만 이번 사고는 키 수탁과 서비스 가용성이 엄연히 다른 경계에 있음을 보여준다. 스테이킹 중이라도 자금 자체는 사용자 제어 하에 안전할 수 있지만, 시뮬레이션·알림·백엔드 기반 기능은 얼마든지 저하될 수 있다. 따라서 상태 알림과 사고 대응 프로세스 체계는 이러한 상태들을 서로 분리하여 보고해야 한다.
+
+---
+
+## 5. Ethereum Glamsterdam 업그레이드: ePBS와 병렬 검증을 Sepolia에서 시험
+
+Ethereum Foundation은 9월 28일 [Glamsterdam을 Sepolia에서 10월 6일 13:53:36 UTC에 활성화한다고 발표했다](https://blog.ethereum.org/en/2026/09/17/glamsterdam-testnet-announcement). Hoodi와 mainnet 일정은 아직 없다. Glamsterdam은 Amsterdam execution layer 변경과 Gloas consensus layer 변경을 포함한다. 핵심은 protocol에 내장된 proposer-builder separation(ePBS)과 block-level access list(BAL)다.
+
+이 블로그에서는 Glamsterdam에서 변경되는 내용을 상세히 다루고 있다. [글 보기: Fusaka, Glamsterdam, Hegota: 이더리움 L1 코어와 확장성 로드맵의 진화](/content/blog/ko/261007-fusaka-glamsterdam-hegota)
 
 ---
 
 > 브리핑은 매주 월요일 Codex로 생성된 분석 자료를 기반으로 작성된다. 게재 전 블로그 운영자의 직접 검수 및 승인을 거친다.
+
+[^1]:
+    **주(State) 신탁회사** 
+    미국 금융 시스템에서 특정 주(State) 정부의 금융 당국으로부터 인가를 받아 운영되는 신탁 전문 금융기관을 의미
+
+[^2]:
+    **ACH 파일**  
+    ACH는 미국 은행들이 쓰는 대량 이체망이다. Automated Clearing House의 약자. 은행은 건건이 실시간으로 돈을 보내지 않고, 여러 이체를 모아 NACHA 형식의 파일로 보낸다. 그걸 ACH 파일이라고 한다. 수신 은행이 파일을 읽어 계좌에 입금·출금한다. 보통 하루 단위로 묶여서 체인처럼 수 초 만에 끝나지 않는다.
