@@ -1,0 +1,65 @@
+---
+title: "Web3 Weekly Brief 2026/10/12"
+description: "Product and engineering implications of EU stablecoin restrictions, USDC in Samsung Wallet, cross-chain vaults, atomic institutional settlement, and the veBTC exploit"
+date: "2026-10-12"
+category: "crypto"
+subcategory: "web3-brief"
+tags: ["Web3", "Stablecoins", "Wallets", "MiCA", "Interoperability", "Security"]
+published: true
+---
+
+Last week brought stablecoins and tokenized assets deeper into consumer wallets and financial infrastructure while making the surrounding regulatory, settlement, and security boundaries more explicit. ESMA told supervisors that MiCA-authorized firms should stop serving non-compliant stablecoins. Samsung Wallet announced cross-border USDC transfers without a separate crypto app or direct key management. Chainlink and Solana introduced infrastructure for reaching one vault from many chains and settling two institutional trade legs atomically. A Mezo exploit showed how two familiar contract patterns can create a new authorization failure when combined.
+
+This brief covers announcements and developments from October 5–11, 2026, in Korea Standard Time.
+
+## 1. ESMA extends non-compliant stablecoin restrictions to custody and transfers
+
+On October 8, the European Securities and Markets Authority issued an [opinion on asset-referenced tokens (ARTs) and e-money tokens (EMTs) that do not comply with MiCA](https://www.esma.europa.eu/sites/default/files/2026-10/ESMA75-113276571-1742_Opinion_on_the_provision_of_crypto_asset_services_in_relation_to_non-MiCA-compliant_asset-referenced_tokens_and_e-money_tokens.pdf). The category covers tokens that do not satisfy the conditions for a lawful public offering or admission to trading in the EU. ESMA says a MiCA-authorized crypto-asset service provider (CASP) should not support these stablecoins through trading, exchange, order execution, advice, transfers, custody and administration, or portfolio management.
+
+Risk disclosures are not an adequate workaround. ESMA's reasoning is that a non-compliant token lacks issuer-level protections such as redemption rights, safeguarded reserves, governance, disclosure, and ongoing supervision. A CASP cannot replace those safeguards by asking customers to acknowledge the gap. National competent authorities should therefore require technical, contractual, and organizational controls that prevent EU clients from acquiring a token or increasing an existing position.
+
+[ESMA's announcement](https://www.esma.europa.eu/press-news/esma-news/esma-sets-out-supervisory-expectations-services-related-unauthorised) allows narrowly limited services needed to liquidate, convert, withdraw, transfer, or safeguard legacy holdings. Supervisors should remediate remaining exposure as soon as possible and no later than three months after publication. The impact extends beyond exchanges and custodians: a wallet or dApp offering stablecoin balances, swaps, payments, or transfers to EU users now needs consistent rules for geolocation, asset allowlists, sell-only states, and withdrawal paths. The document is a supervisory opinion rather than an amendment to MiCA, but it is designed to align how national authorities oversee authorized CASPs.
+
+---
+
+## 2. Samsung Wallet puts cross-border USDC behind device authentication
+
+Samsung Electronics America announced on October 7 that [stablecoin functionality will reach eligible US Galaxy devices in the last week of October](https://news.samsung.com/us/samsung-wallet-bring-stablecoin-access-eligible-galaxy-users-us/). USDC will be the first supported asset. Users will be able to send it to compatible crypto wallets or eligible bank accounts in more than 60 countries, where recipients may receive local currency. The flow requires biometric authentication on a registered device and does not ask users to install another crypto app or manage private keys themselves.
+
+Bastion and Coinbase will help operate the USDC functionality, while separate partners—including Solana and Sui—will provide blockchain and other technical infrastructure. The Solana Foundation says [Solana-based USDC transfers are planned for 82 million US Galaxy devices](https://solana.com/news/samsung-wallet), with fiat on- and off-ramps integrated into the wallet interface. This was still a pre-launch announcement during the reporting window, and access will depend on device and user eligibility.
+
+The design is closer to a remittance service that hides chains and keys inside a familiar mobile wallet than to mass-market self-custody. Replacing recovery phrases with device authentication reduces onboarding friction, but makes account recovery, device migration, sanctions screening, transaction holds, and partner outages central to the experience. The product also needs distinct states for the app request, stablecoin transfer, fiat conversion, and final bank credit, with clear ownership when one provider completes its leg and another does not.
+
+---
+
+## 3. Chainlink's CCIP adapter keeps vault accounting on one chain
+
+Chainlink released [CCIP Vault Adapters](https://chain.link/blog/introducing-ccip-vault-adapters) on October 8. An ERC-4626 vault can keep its assets, accounting, and risk controls on one hub chain while accepting deposits and redemptions from other CCIP-connected networks. Standard vaults can deploy an adapter through a factory contract. Chainlink says the model reaches more than 80 supported blockchains and is being adopted by protocols and vault providers including Aave, Venus, Lombard, and Veda.
+
+According to the [technical documentation](https://docs.chain.link/solutions/cross-chain-vault-adapter), a source-chain user approves the CCIP Router and sends one message containing the asset plus the vault, beneficiary, minimum output, delivery choice, and refund address. The adapter deposits into the vault on the hub chain, then leaves the resulting shares there or returns them to the source chain through CCIP. This removes the manual sequence of bridging an asset, switching networks, acquiring hub-chain gas, approving the vault, depositing, and bridging shares back.
+
+One interface does not make the workflow one atomic transaction. The vault exchange rate applies when execution reaches the hub chain, not when the user sends the message; a minimum-output field bounds that movement. If processing fails, tokens remain in the adapter and it emits `MessageFailed`. There is no automatic retry or refund. The vault team deploys and operates the adapter, funds native gas for return legs, and monitors failures. A production interface therefore needs explicit states for in-flight delivery, destination reverts, local recovery, and source-chain refunds—not just a success screen for the initial message.
+
+---
+
+## 4. Solana DvP atomically exchanges a tokenized asset and its payment leg
+
+The Solana Foundation announced an [open-source delivery-versus-payment program for institutional trades](https://solana.com/news/solana-foundation-launches-solana-dv-p-an-atomic-settlement-program-built-for-financial-institutions) on October 6. A buyer and seller fund separate escrows with the payment asset and tokenized asset. A named settlement authority then transfers both legs in one Solana transaction, so either both complete or neither does. J.P. Morgan contributed input on securities-settlement practices but did not design, certify, operate, or guarantee the program.
+
+The MIT-licensed program supports SPL Token and Token-2022. [Solana's documentation](https://solana.com/docs/defi/dvp-program) says each leg can be funded with an ordinary `TransferChecked`, so a wallet or custodian does not need a DvP-specific funding instruction. Either party can reclaim its own asset before settlement, and settlement fails after the agreed deadline. The mainnet and devnet deployments remain upgradeable, with an upgrade authority retained on mainnet.
+
+Atomic delivery removes principal risk between the two parties, not every risk in the transaction. The program provides no matching, price discovery, KYC, or netting, and settlement still depends on the settlement authority signing. Issuer credit and redemption risk remain, as do Token-2022 freeze, pause, and permanent-delegate powers. Trade-record creation is also permissionless, so custodians and trading systems must independently verify the program owner, parties, mints, amounts, deadlines, authority, and destination addresses before funding.
+
+---
+
+## 5. The Mezo veBTC exploit lost sender identity across a library boundary
+
+Mezo said in an [October 7 incident report](https://mezo.org/blog/incident-report-october-5-2026/) that an attacker exploited its veBTC `VotingEscrow` contract on October 5, moving 37 positions from 36 wallets and bridging out 5.519 BTC. veBTC is an NFT representing locked BTC and its voting power. Mezo said protocol-owned funds would make affected users whole and that no additional funds remained at risk.
+
+The vulnerability emerged where a trusted-forwarder meta-transaction pattern met external Solidity libraries used to stay below the EVM contract-size limit. The forwarder appended the verified sender address to the final 20 bytes of calldata, which the contract used for authorization. An external library call, however, created a fresh calldata buffer from declared arguments and did not carry the appended sender into the new stack frame. The attacker crafted the tail of `safeTransferFrom`'s `_data` argument so the library interpreted the attacker as the authenticated sender.
+
+Mezo paused bridge withdrawals within 33 minutes of declaring the incident, disabled meta-transactions, and reviewed every function reachable through the same path. The code had undergone two audits and had a bug bounty, but neither caught this interaction. Authorization tests need to prove that identity survives library boundaries and should fuzz arbitrary trailing calldata as well as differences among direct, external, and delegated calls. Bridge limits and pause controls can reduce damage, but cannot recover assets when detection follows the outflow. Monitoring should correlate unauthorized NFT movement with immediate redemption and bridge-out as one incident path.
+
+---
+
+> This brief is based on analysis generated with Codex each Monday. It is published only after the blog operator's direct review and approval.
