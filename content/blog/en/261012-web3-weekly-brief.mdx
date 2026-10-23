@@ -60,6 +60,19 @@ The vulnerability emerged where a trusted-forwarder meta-transaction pattern met
 
 Mezo paused bridge withdrawals within 33 minutes of declaring the incident, disabled meta-transactions, and reviewed every function reachable through the same path. The code had undergone two audits and had a bug bounty, but neither caught this interaction. Authorization tests need to prove that identity survives library boundaries and should fuzz arbitrary trailing calldata as well as differences among direct, external, and delegated calls. Bridge limits and pause controls can reduce damage, but cannot recover assets when detection follows the outflow. Monitoring should correlate unauthorized NFT movement with immediate redemption and bridge-out as one incident path.
 
+### Meta-transaction
+
+[ERC-2771](https://eips.ethereum.org/EIPS/eip-2771)
+
+- Situation: A relayer/forwarder pays the gas fee on behalf of the user and submits the transaction
+
+- Problem: When the smart contract checks `msg.sender`, the address of the 'relayer who paid the gas fee' is recorded instead of the actual user
+
+- Solution (Using Trailing Calldata):
+
+  The relayer appends the actual user address to the end of the transaction data (Trailing Calldata) <br/>
+  The target smart contract reads the last 20 bytes of the CallData to recognize the true sender (`_msgSender()`) who requested the command
+
 ---
 
 > This brief is based on analysis generated with Codex each Monday. It is published only after the blog operator's direct review and approval.
