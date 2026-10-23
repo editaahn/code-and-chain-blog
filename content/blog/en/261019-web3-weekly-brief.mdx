@@ -1,0 +1,56 @@
+---
+title: "Web3 Weekly Brief 2026/10/19"
+description: "Ledger's hardware-wallet supply-chain attack, Ethereum and Polygon protocol updates, USDC's new MiCA status, and stablecoin card infrastructure shaped Web3 product and engineering decisions last week."
+date: "2026-10-19"
+category: "crypto"
+subcategory: "web3-brief"
+tags: ["Web3", "Wallet Security", "Ethereum", "Polygon", "USDC", "Stablecoins", "MiCA", "Payments"]
+published: true
+---
+Last week, from October 12 through October 18 in Korea Standard Time, Web3 teams received a concentrated set of signals about where operational risk is moving. A hardware-wallet attack reached users through physical distribution, two major networks advanced or hardened parallel execution, European regulators raised the supervisory bar for USDC, and a card processor paired traditional issuing infrastructure with onchain settlement. These are the five developments with the clearest product and engineering consequences.
+
+## 1. Ledger Disclosed a Hardware Implant Attack in Its Reseller Channel
+
+On October 15, Ledger disclosed that an organized criminal group had [bought genuine devices, installed hidden components designed to capture recovery phrases during setup, and returned the modified units to distribution through resellers in Southeast Asia](https://support.ledger.com/article/Ledger-s-Response-to-the-Hardware-Implant-Attack). The attackers later drained wallets in a coordinated operation. Ledger said its chips, operating system, and servers were not compromised and described the incident as a localized attack after the devices had left its control, rather than a compromise of its own production systems. It did not publish an affected-device count or loss total.
+
+Ledger asked authorized resellers and distributors to suspend sales in Southeast Asia and Hong Kong while it investigated. It also tightened channel rules: returned devices cannot be resold, products should remain off shelves and displays until purchase, and partners must promptly report unusual units. The company said it would publish more technical detail when doing so would not impede the investigation.
+
+The incident expands the wallet threat model beyond firmware integrity and transaction signing. Authentic software and a genuine secure element do not, by themselves, prove that the enclosure, display path, or onboarding flow has not been altered after manufacture. Hardware-wallet vendors and the products that recommend them should treat reseller provenance, tamper detection, returns handling, and first-run anomaly reporting as security controls. Wallet onboarding should also make the trusted purchase path explicit instead of presenting device authenticity as a single in-app attestation result.
+
+## 2. Ethereum Scheduled Glamsterdam's Hoodi Testnet Activation
+
+The Ethereum Foundation announced on October 16 that [Glamsterdam will activate on the Hoodi testnet at epoch 132,352 on October 26 at 17:42:48 UTC](https://blog.ethereum.org/2026/10/16/glamsterdam-hoodi-announcement). Hoodi's gas limit will rise to 200 million at the same epoch. Mainnet remains unscheduled, so this is a testnet milestone rather than a mainnet launch.
+
+Glamsterdam combines the Amsterdam execution-layer upgrade with the Gloas consensus-layer upgrade. Its two structural changes are enshrined proposer-builder separation, which moves the proposer-builder commitment, payload reveal, and payment flow into Ethereum's consensus protocol, and block-level access lists, which expose the accounts and storage touched by a block so clients can parallelize state reads, transaction validation, and state-root computation. The upgrade also reprices state creation and access, changes intrinsic and block gas accounting, adds ETH transfer logs and new opcodes, and raises the maximum contract size.
+
+Those changes make the Hoodi window relevant well beyond node teams. Validator and builder operators must update both execution and consensus clients and test the new payload-reveal duties. Contract, wallet, RPC, and simulation teams should test against the revised gas schedule and stop assuming that fixed stipends, hardcoded limits, or current gas-estimation behavior will survive unchanged. The Foundation's [repricing guidance](https://blog.ethereum.org/2026/08/24/glamsterdam-repricing) is the practical starting point for locating contracts whose execution depends on those assumptions.
+
+## 3. Polygon Published Bor 2.10.3 After Privately Distributing Two DoS Fixes
+
+Polygon Labs published Bor 2.10.3 on October 15 after validators and major RPC providers had already received private builds. The [security review](https://forum.polygon.technology/t/bor-security-bug-fix-review-v2-10-3/22379) describes two medium-severity denial-of-service issues in BlockSTM V2, the parallel execution engine enabled by default in Bor 2.10.1 and 2.10.2. Polygon said it knew of no exploitation on mainnet or Amoy.
+
+The first issue let speculative execution fill an unbounded per-block cache with unique `keccak256` results. In Polygon's test, a block consuming roughly 9.3 million gas caused about 690 MiB of allocation and took more than one second to import on a four-core machine. The second repeatedly recalculated the code hash of a maximum-size contract: serial execution finished in tens of milliseconds, while the parallel path took roughly 11 seconds. Neither bug changed consensus results, but both let valid, comparatively cheap transactions impose enough extra work to make nodes lag or exhaust memory.
+
+The fixes cap shared caches and memoize code hashes per transaction. The release also hardens EIP-7702 authorization filtering, bounds JSON-RPC batch execution, and evicts transaction chains stranded below the base fee. Operators on 2.10.2 or earlier should upgrade; the [release does not require a hard fork, database migration, or resync](https://forum.polygon.technology/t/bor-v2-10-3-release-mainnet-and-testnet-pos/22372). They should check the configured Heimdall timeout before restarting because a previously ignored value now takes effect, and older sample configurations used five seconds instead of the current 30-second default.
+
+For client and rollup engineers, the larger lesson is that parallel execution needs its own resource accounting. Gas constrained the canonical work but did not constrain discarded speculative work, creating a liveness gap without a consensus bug. Benchmarks and adversarial tests should therefore measure peak memory, cancellation latency, and duplicated computation under valid blocks, not only throughput on representative traffic.
+
+## 4. The EBA Classified USDC as the EU's First Significant E-Money Token
+
+On October 14, the European Banking Authority [classified USDC issued by Circle Internet Financial Europe SAS as a significant e-money token under MiCA](https://www.eba.europa.eu/publications-and-media/press-releases/eba-classifies-usdc-first-significant-e-money-token-european-union). The EBA said 45 e-money tokens had been notified under MiCA and USDC was the first to cross the significance threshold.
+
+The designation changes the supervisory structure on November 12. The EBA will take direct responsibility for own funds, reserve assets, liquidity requirements, and recovery and redemption plans. France's Autorité de Contrôle Prudentiel et de Résolution will continue supervising governance, qualifying holdings, fitness and propriety, outsourcing, and conflicts of interest. This is a transfer of specific oversight duties, not a token migration or a change to USDC smart-contract addresses.
+
+European exchanges, wallets, payment products, and DeFi interfaces that support USDC should nevertheless update their issuer-risk and compliance records. Reserve, liquidity, redemption, and incident-escalation evidence will now span two supervisors, while governance and outsourcing remain with the national authority. Product teams should keep that distinction visible in disclosures and operational runbooks instead of reducing MiCA status to a single "regulated" flag.
+
+## 5. Marqeta and Coinbase Split the Stablecoin Card Stack Across Custody, Base, and Card Rails
+
+Marqeta announced on October 16 that it is [working with Coinbase to let enterprise customers offer cards backed by stablecoin balances](https://investors.marqeta.com/news-releases/news-release-details/marqeta-and-coinbase-collaborate-enable-stablecoin-backed-card/). Coinbase will custody the stablecoins and handle conversion between digital assets and fiat, Base will provide the onchain settlement layer, and Marqeta will handle issuing, payment processing, and bank and card-network relationships. Marqeta said businesses would be able to fund card programs around the clock and cardholders could spend through existing merchant acceptance.
+
+The announcement describes infrastructure rather than an available card program. It names no supported stablecoin, launch customer, rollout date, fee schedule, or initial jurisdiction. Those omissions matter because custody, conversion, and Base settlement cover only part of the payment life cycle; authorization, clearing, refunds, disputes, liquidity, and fiat settlement still cross conventional card and banking systems.
+
+Teams considering this stack should model those boundaries explicitly. A stablecoin balance cannot be treated as immediately spendable merely because it exists onchain, and a successful Base transaction is not equivalent to final card-network reconciliation. Product states should separate balance availability, conversion, authorization, clearing, settlement, reversal, and refund, while operational plans account for outages or holds at each provider. The collaboration is consequential because it packages those components for enterprise issuers, but production readiness will depend on the commercial and jurisdictional details that the companies have not yet disclosed.
+
+---
+
+> This brief is based on analysis generated with Codex each Monday. It is published only after the blog operator's direct review and approval.
