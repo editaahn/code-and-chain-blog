@@ -37,7 +37,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## 자동 블로그 번역
 
-한글(`/content/blog/ko`) 포스팅을 커밋하면 husky post-commit 훅이 실행되어 OpenAI로 영어 번역본을 `/content/blog/en`에 자동 생성합니다.
+한글(`/content/blog/ko`) 포스팅을 커밋하면 husky pre-commit 훅이 실행되어 OpenAI로 영어 번역본을 `/content/blog/en`에 자동 생성합니다. 같은 경로의 영문 파일이 이미 있으면 번역을 건너뛰고 기존 내용을 유지합니다.
 
 ### 설정
 1. `.env.local` (또는 `.env`)에 `OPENAI_API_KEY` 설정 (`.env.example` 참고)
@@ -45,8 +45,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ### 사용법
 - `content/blog/ko/*.mdx` 파일을 수정/추가 후 `git commit`
-- post-commit에서 `scripts/translate-post.ts`가 ko 파일을 감지해 en MDX 생성
-- 생성된 en 파일은 자동으로 `git add` 되어 다음 커밋에 포함 가능
+- pre-commit에서 스테이징된 ko 파일 중 대응하는 영문 파일이 없는 경우에만 `scripts/translate-post.ts`로 en MDX 생성
+- 생성된 en 파일은 자동으로 `git add` 되어 해당 커밋에 포함
 
 ### 주의
 - 번역 품질은 GPT-4o에 의존하므로 생성 후 검토 권장
