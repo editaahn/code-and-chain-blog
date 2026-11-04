@@ -1,0 +1,71 @@
+---
+title: "Web3 Weekly Brief 2026/11/02"
+description: "Product and engineering lessons from Soneium's tokenized IP stack, the Polymarket incident, the tBTC pause, Ethena Pay Earn+, and Uniswap TJAR"
+date: "2026-11-02"
+category: "crypto"
+subcategory: "web3-brief"
+tags: ["Web3", "Security", "Tokenization", "DeFi", "Stablecoins", "Infrastructure"]
+published: true
+---
+
+Last week pushed Web3 teams to make complex rights, risks, and control boundaries legible to users. Soneium laid out a tokenized IP stack for registering creative works, expressing licenses, and distributing revenue. A compromised performance-monitoring script used active Polymarket sessions to sell positions and move funds. Threshold paused the tBTC bridge, and Aave limited new exposure. Meanwhile, Ethena Pay put a leveraged stablecoin strategy behind a one-click savings interface, and Uniswap opened its fee-conversion system to other applications.
+
+This brief covers consequential developments from October 26–November 1, 2026, in Korea Standard Time.
+
+## 1. Soneium turns tokenized IP into a product stack
+
+On October 26, Soneium, the OP Stack network built by Sony Group and Startale Group, [set out a new direction around tokenized intellectual property](https://soneium.org/en/blog/onchain-entertainment-economy). Its Soneium Portal begins with primary sales and is intended to expand into fan participation and royalty distribution. The project describes three product forms: IP Tokens tied to a creator, studio, or title; IP Vaults offering exposure to pools such as music catalog funds; and IP Bonds backed by entertainment businesses. Moriusa, a character produced by Super State Holdings, is its first IP Token, while a DayOneDream partnership is intended to bring K-pop concert royalties onchain.
+
+The more consequential proposal sits below those products. Soneium's planned architecture combines an IP Registry for origin and rights metadata, an IP Graph that links originals with derivatives and collaborations, and an execution layer for licenses, revenue splits, and royalty payments. It also supports [ERC-8432, a proposed machine-readable interface for IP registries and licenses](https://docs.soneium.org/docs/vision-paper/key-initiatives). That could let applications and AI agents query terms and settle permitted uses without depending on one marketplace's database.
+
+Soneium stands out because Sony Group and Startale Group are trying to connect IP registration, licensing, derivative relationships, and revenue distribution in one product flow on an OP Stack Ethereum L2. Rather than stopping at minting content as NFTs, the project aims to make the full lifecycle of IP use and monetization programmable.
+
+The test is whether Soneium can align onchain records with enforceable rights, reconcile offchain revenue, and clearly show users what each token represents. If it closes those gaps, Tokenized IP could become a repeatable Web3 product category rather than a series of one-off projects.
+
+---
+
+## 2. A monitoring script turns active Polymarket sessions into a withdrawal path
+
+On October 29, a third-party performance-monitoring script loaded by Polymarket was replaced with code that targeted its users. According to [Polymarket's postmortem](https://status.polymarket.com/cmvvek1i90eme14ruga1z6tuj), the script used active browser sessions to sell positions and move funds from wallets for users who had the site open during the attack window. The company paused trading and its relayer, cleared caches, reset all active login sessions, and restored the web app after a 37-minute major outage.
+
+Polymarket said it would return $2.7 million taken in the attack plus $1.2 million for positions and pause-related losses. It identified eligible wallets from onchain and trading data rather than requiring a claim. The incident did not require a failure in the market contracts themselves: trusted JavaScript running inside an authenticated page already had enough context to invoke sensitive application flows.
+
+That distinction matters for every dApp that treats a connected wallet as its security boundary. A transaction simulation, wallet prompt, or contract audit cannot protect users when the page that constructs the action is hostile and the session or smart-wallet policy lets it proceed. Asset-intensive dApps should keep nonessential third-party scripts off authenticated trading and signing surfaces, pin versions, and enforce a restrictive Content Security Policy. Polymarket said it was redeploying third-party scripts with stronger CSP rules, explicit version pinning, sandboxing, and continuous integrity checks.
+
+The refund process also exposed a product requirement that security plans often omit. A trading platform needs enough event history to reconstruct not just direct drains but losses created by forced sales, slippage, and an emergency pause that spans market resolution. Incident accounting, relayer controls, session invalidation, and customer remediation should be designed together rather than assembled after an attack.
+
+---
+
+## 3. Threshold pauses tBTC's bridge while lending markets limit exposure
+
+Threshold Network paused new BTC deposits, tBTC minting, and new Bitcoin redemption requests on October 31 while it performed security maintenance. The [precautionary pause](https://governance.aave.com/t/tbtc-mint-redeem-pause-aaves-response/25965) temporarily removed the direct path between the ERC-20 asset and native Bitcoin, even though tBTC could continue circulating on EVM networks.
+
+Aave responded by [freezing tBTC on its V3 Ethereum Core market](https://governance.aave.com/t/tbtc-mint-redeem-pause-aaves-response/25965). The action blocked new tBTC deposits and prevented tBTC from adding borrowing power, while existing users could still repay, withdraw, and undergo liquidation. Aave left the asset's liquidation threshold unchanged, so the control did not reduce existing positions' health factors. Its Base and Arbitrum tBTC reserves had already been frozen through earlier deprecation work.
+
+The episode illustrates why an onchain reserve balance and a working redemption path are different guarantees. A wrapped asset can remain fully backed while losing the mechanism that arbitrageurs use to close a discount, and that can weaken secondary-market liquidity exactly when lenders need to liquidate collateral. Wallets and DeFi interfaces should therefore expose mint, transfer, and redemption availability as separate states instead of presenting one generic network status. Bridge integrations also need durable receipts and idempotent recovery: Threshold specifically told users with pending operations to retain transaction evidence and not retry by sending BTC again.
+
+For lending protocols, an asset-level freeze is less disruptive than a market-wide pause, but only if governance or guardian transactions are prepared before an incident. Risk systems should monitor bridge state, redemption depth, and secondary liquidity alongside proof of reserves, then define how and when new collateral capacity returns after service resumes.
+
+---
+
+## 4. Ethena Pay puts an 11x stablecoin loop behind a one-click Earn+ balance
+
+Ethena Pay launched Earn+ on October 28 with a target return of up to 12%. The [underlying strategy](https://pay.ethena.fi/blog/earn-launch) supplies USDe to Aave V4 on Avalanche, borrows USDT to buy more USDe, and repeats the loop to reach approximately 11x leverage. Upshift provides the vault infrastructure, Steakhouse curates the strategy, and Ethena Pay provides the interface. The vault launched with a $4.5 million cap.
+
+Displaying the balance in dollars does not turn the product into a deposit account. Ethena Pay's [Earn+ FAQ](https://pay.ethena.fi/faq) says the return can change, the assets are neither insured nor principal-protected, and withdrawals are processed rather than instant, normally within 24 hours.
+
+The central risk is that 11x leverage magnifies small changes in USDe's price, USDT borrowing costs, or Aave's liquidation parameters. The interface should therefore separate spendable balances from vault positions and show returns after costs alongside withdrawal status. "No lock-up" should mean there is no mandatory holding period, not that immediate liquidity is guaranteed.
+
+---
+
+## 5. Uniswap turns fee conversion into reusable onchain infrastructure
+
+Uniswap Labs released TJAR on October 29 for applications that collect fees in many assets but want to settle in one token. A Token Jar is a smart contract that holds those fee assets until the posted conversion terms attract a searcher. The application chooses the settlement token, fixed release amount, and destination. When the contents become valuable enough, a searcher pays that amount and receives the assets in the jar. Uniswap says [TJAR is live on seven chains](https://blog.uniswap.org/tjar-onchain-fee-conversion-for-any-app), and Robinhood uses it to convert Uniswap API fees into USDC and USDG.
+
+TJAR uses a [posted price rather than an oracle or continuous auction](https://blog.uniswap.org/how-tjar-works-uniswaps-onchain-fee-conversion-system). A lower release amount clears the jar more often and limits price exposure, but a sudden large deposit can leave extra value for the first searcher. A higher amount reduces that risk but leaves volatile or illiquid fee assets on the application's balance sheet for longer.
+
+The important shift is that teams can publish an onchain conversion opportunity instead of operating their own swap bot or keeper. Execution becomes simpler, but it still depends on searcher incentives and secure configuration. Applications should protect changes to the settlement token and destination, then monitor jars that stop clearing or consistently give away too much value.
+
+---
+
+> This brief is based on analysis generated with Codex each Monday. It is published only after the blog operator's direct review and approval.
